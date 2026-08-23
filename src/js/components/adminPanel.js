@@ -369,12 +369,16 @@ function openProductModalForm(product) {
   document.getElementById('p-new').checked = product ? !!product.isNew : false;
   document.getElementById('p-bargain').checked = product ? !!product.isBargain : false;
 
+  const fileInput = document.getElementById('p-image-file');
+  if (fileInput) fileInput.value = '';
+
   const previewWrap = document.getElementById('p-image-preview');
   const previewImg = document.getElementById('p-preview-img');
   if (product && product.image) {
     previewImg.src = product.image;
     previewWrap.style.display = 'block';
   } else {
+    previewImg.src = '';
     previewWrap.style.display = 'none';
   }
 
@@ -392,27 +396,49 @@ function setupModalFormListeners() {
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
-  // Upload Button Trigger
+  // Upload Button Trigger & Instant Preview
   const uploadBtn = document.getElementById('p-upload-btn');
   const fileInput = document.getElementById('p-image-file');
   const urlInput = document.getElementById('p-image-url');
+  const previewWrap = document.getElementById('p-image-preview');
+  const previewImg = document.getElementById('p-preview-img');
+
+  if (urlInput) {
+    urlInput.addEventListener('input', (e) => {
+      const url = e.target.value.trim();
+      if (url && previewImg && previewWrap) {
+        previewImg.src = url;
+        previewWrap.style.display = 'block';
+      }
+    });
+  }
 
   if (uploadBtn && fileInput) {
     uploadBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (file) {
+        // Preview local instantâneo via FileReader
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (previewImg && previewWrap) {
+            previewImg.src = event.target.result;
+            previewWrap.style.display = 'block';
+          }
+          if (urlInput) urlInput.value = event.target.result;
+        };
+        reader.readAsDataURL(file);
+
         uploadBtn.disabled = true;
         uploadBtn.textContent = 'Enviando...';
+
         const res = await uploadProductImage(file);
         if (res.success) {
           urlInput.value = res.url;
-          const previewWrap = document.getElementById('p-image-preview');
-          const previewImg = document.getElementById('p-preview-img');
           previewImg.src = res.url;
-          previewWrap.style.display = 'block';
+          console.log('✅ Foto enviada para o Firebase Storage:', res.url);
         } else {
-          alert('Erro no upload: ' + res.error);
+          console.warn('⚠️ Fallback de imagem local ativado:', res.error);
         }
         uploadBtn.disabled = false;
         uploadBtn.textContent = '📷 Upload Foto';
