@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Local & Secret Environment Variables
+.env
+.env.development
+.env.staging
+.env.production
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
