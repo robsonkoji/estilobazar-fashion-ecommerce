@@ -172,8 +172,11 @@ export function renderAdminPanel() {
                 📷 Upload Foto
               </button>
             </div>
-            <div id="p-image-preview" style="margin-top: 0.5rem; display: none;">
-              <img id="p-preview-img" src="" alt="Preview" style="height: 70px; border-radius: var(--radius-sm); border: 1px solid var(--c-pink);" />
+            <div id="p-image-preview" style="margin-top: 0.6rem; display: none; align-items: center; gap: 0.8rem;">
+              <img id="p-preview-img" src="" alt="Preview" style="height: 75px; width: 60px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--c-pink);" />
+              <button type="button" id="p-remove-img-btn" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; border-color: #E05252; color: #C62828;">
+                🗑️ Remover Foto
+              </button>
             </div>
           </div>
 
@@ -404,12 +407,24 @@ function setupModalFormListeners() {
   const previewWrap = document.getElementById('p-image-preview');
   const previewImg = document.getElementById('p-preview-img');
 
+  const removeImgBtn = document.getElementById('p-remove-img-btn');
+  if (removeImgBtn) {
+    removeImgBtn.addEventListener('click', () => {
+      if (urlInput) urlInput.value = '';
+      if (fileInput) fileInput.value = '';
+      if (previewImg) previewImg.src = '';
+      if (previewWrap) previewWrap.style.display = 'none';
+    });
+  }
+
   if (urlInput) {
     urlInput.addEventListener('input', (e) => {
       const url = e.target.value.trim();
       if (url && previewImg && previewWrap) {
         previewImg.src = url;
         previewWrap.style.display = 'block';
+      } else if (!url && previewWrap) {
+        previewWrap.style.display = 'none';
       }
     });
   }
