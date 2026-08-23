@@ -418,30 +418,37 @@ function setupModalFormListeners() {
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (file) {
-        // Preview local instantâneo via FileReader
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (previewImg && previewWrap) {
-            previewImg.src = event.target.result;
-            previewWrap.style.display = 'block';
-          }
-          if (urlInput) urlInput.value = event.target.result;
-        };
-        reader.readAsDataURL(file);
-
         uploadBtn.disabled = true;
         uploadBtn.textContent = 'Enviando...';
 
-        const res = await uploadProductImage(file);
-        if (res.success) {
-          urlInput.value = res.url;
-          previewImg.src = res.url;
-          console.log('✅ Foto enviada para o Firebase Storage:', res.url);
-        } else {
-          console.warn('⚠️ Fallback de imagem local ativado:', res.error);
-        }
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = '📷 Upload Foto';
+        // 1. Converte e exibe a imagem escolhida imediatamente via FileReader DataURL
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const dataUrl = event.target.result;
+          if (previewImg && previewWrap) {
+            previewImg.src = dataUrl;
+            previewWrap.style.display = 'block';
+          }
+          if (urlInput) urlInput.value = dataUrl;
+
+          // 2. Tenta fazer upload para o Firebase Storage
+          try {
+            const res = await uploadProductImage(file);
+            if (res && res.success && res.url) {
+              urlInput.value = res.url;
+              previewImg.src = res.url;
+              console.log('✅ Foto enviada e salva no Firebase Storage:', res.url);
+            } else {
+              console.warn('⚠️ Foto salva localmente (Base64):', res ? res.error : 'Storage offline');
+            }
+          } catch (uploadErr) {
+            console.warn('⚠️ Mantendo imagem local Base64:', uploadErr.message);
+          }
+
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = '📷 Upload Foto';
+        };
+        reader.readAsDataURL(file);
       }
     });
   }
@@ -455,6 +462,8 @@ function setupModalFormListeners() {
         submitBtn.textContent = 'Salvando...';
       }
 
+      const imageUrl = document.getElementById('p-image-url').value.trim();
+
       const productData = {
         title: document.getElementById('p-title').value.trim(),
         category: document.getElementById('p-category').value,
@@ -463,12 +472,12 @@ function setupModalFormListeners() {
         originalPrice: parseFloat(document.getElementById('p-original-price').value) || 0,
         size: document.getElementById('p-size').value.trim(),
         condition: document.getElementById('p-condition').value.trim(),
-        image: document.getElementById('p-image-url').value.trim() || 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80',
+        image: imageUrl || 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80',
         description: document.getElementById('p-description').value.trim(),
-        badge: document.getElementById('p-price').value <= 99 ? 'Achado < R$99' : 'Brechó Curado',
+        badge: parseFloat(document.getElementById('p-price').value) <= 99 ? 'Achado < R$99' : 'Brechó Curado',
         isFeatured: document.getElementById('p-featured').checked,
         isNew: document.getElementById('p-new').checked,
-        isBargain: document.getElementById('p-bargain').checked || (document.getElementById('p-price').value <= 99)
+        isBargain: document.getElementById('p-bargain').checked || (parseFloat(document.getElementById('p-price').value) <= 99)
       };
 
       let result;
