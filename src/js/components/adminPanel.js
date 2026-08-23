@@ -465,6 +465,9 @@ function openProductModalForm(product) {
     uploadBtn.textContent = '📷 + Adicionar Fotos';
   }
 
+  modal.style.display = 'flex';
+  modal.style.opacity = '1';
+  modal.style.pointerEvents = 'auto';
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
 }
@@ -476,7 +479,13 @@ function setupModalFormListeners() {
   const form = document.getElementById('admin-product-form');
 
   const closeModal = () => {
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+      modal.style.opacity = '0';
+      modal.style.pointerEvents = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+    }
     const uploadBtn = document.getElementById('p-upload-btn');
     if (uploadBtn) {
       uploadBtn.disabled = false;
@@ -486,6 +495,27 @@ function setupModalFormListeners() {
 
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+  // Delegação Global de Cliques para garantia absoluta de abertura do modal
+  document.addEventListener('click', (e) => {
+    const addBtn = e.target.closest('#admin-add-product-btn');
+    if (addBtn) {
+      e.preventDefault();
+      openProductModalForm(null);
+      return;
+    }
+
+    const editBtn = e.target.closest('.btn-edit-product');
+    if (editBtn) {
+      e.preventDefault();
+      const id = editBtn.getAttribute('data-id');
+      const prod = adminProducts.find(p => String(p.id) === String(id));
+      if (prod) {
+        openProductModalForm(prod);
+      }
+      return;
+    }
+  });
 
   const uploadBtn = document.getElementById('p-upload-btn');
   const fileInput = document.getElementById('p-image-file');
