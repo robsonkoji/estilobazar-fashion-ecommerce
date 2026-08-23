@@ -397,31 +397,56 @@ function renderGalleryPreviews() {
 function openProductModalForm(product) {
   editingProductId = product ? product.id : null;
   const modal = document.getElementById('admin-product-modal');
-  const title = document.getElementById('admin-modal-title');
+  if (!modal) {
+    console.error('⚠️ Elemento #admin-product-modal não encontrado no DOM!');
+    return;
+  }
 
+  const title = document.getElementById('admin-modal-title');
   if (title) {
     title.textContent = product ? 'Editar Peça Garimpada' : 'Cadastrar Novo Garimpo';
   }
 
-  document.getElementById('p-title').value = product ? product.title : '';
-  document.getElementById('p-category').value = product ? product.category : 'Vestidos';
-  document.getElementById('p-brand').value = product ? product.brand : '';
-  document.getElementById('p-price').value = product ? product.price : '';
-  document.getElementById('p-original-price').value = product && product.originalPrice ? product.originalPrice : '';
-  document.getElementById('p-size').value = product ? product.size : '';
-  document.getElementById('p-condition').value = product ? product.condition : 'Como Nova';
-  document.getElementById('p-description').value = product ? product.description : '';
-  document.getElementById('p-featured').checked = product ? !!product.isFeatured : false;
-  document.getElementById('p-new').checked = product ? !!product.isNew : false;
-  document.getElementById('p-bargain').checked = product ? !!product.isBargain : false;
+  const elTitle = document.getElementById('p-title');
+  if (elTitle) elTitle.value = product ? product.title || '' : '';
+
+  const elCat = document.getElementById('p-category');
+  if (elCat) elCat.value = product ? product.category || 'Vestidos' : 'Vestidos';
+
+  const elBrand = document.getElementById('p-brand');
+  if (elBrand) elBrand.value = product ? product.brand || '' : '';
+
+  const elPrice = document.getElementById('p-price');
+  if (elPrice) elPrice.value = product && product.price !== undefined ? product.price : '';
+
+  const elOrigPrice = document.getElementById('p-original-price');
+  if (elOrigPrice) elOrigPrice.value = product && product.originalPrice ? product.originalPrice : '';
+
+  const elSize = document.getElementById('p-size');
+  if (elSize) elSize.value = product ? product.size || '' : '';
+
+  const elCond = document.getElementById('p-condition');
+  if (elCond) elCond.value = product ? product.condition || 'Como Nova' : 'Como Nova';
+
+  const elDesc = document.getElementById('p-description');
+  if (elDesc) elDesc.value = product ? product.description || '' : '';
+
+  const elFeat = document.getElementById('p-featured');
+  if (elFeat) elFeat.checked = product ? !!product.isFeatured : false;
+
+  const elNew = document.getElementById('p-new');
+  if (elNew) elNew.checked = product ? !!product.isNew : false;
+
+  const elBarg = document.getElementById('p-bargain');
+  if (elBarg) elBarg.checked = product ? !!product.isBargain : false;
 
   const fileInput = document.getElementById('p-image-file');
   if (fileInput) fileInput.value = '';
 
   // Carrega lista de fotos existentes
-  if (product && product.images && product.images.length > 0) {
+  if (product && product.images && Array.isArray(product.images) && product.images.length > 0) {
     currentProductImages = [...product.images];
-  } else if (product && product.gallery && product.gallery.length > 0) {
+  } else if (product && product.gallery && Array.isArray(product.gallery) && product.gallery.length > 0) {
     currentProductImages = [...product.gallery];
   } else if (product && product.image) {
     currentProductImages = [product.image];
@@ -441,6 +466,7 @@ function openProductModalForm(product) {
   }
 
   modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
 }
 
 function setupModalFormListeners() {
