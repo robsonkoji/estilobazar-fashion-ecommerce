@@ -30,6 +30,7 @@ import { isAuthenticated } from './utils/auth.js';
 import { renderAdminLogin, setupAdminLoginListeners } from './components/adminLogin.js';
 import { renderAdminPanel, setupAdminPanelListeners } from './components/adminPanel.js';
 import { renderComingSoonPage, setupComingSoonListeners } from './components/comingSoon.js';
+import { renderCustomerAccount, setupCustomerAccountListeners } from './components/customerAccount.js';
 
 // Flag de Modo de Manutenção / Em Breve (defina como false para lançar publicamente!)
 const IS_COMING_SOON_MODE = true;
@@ -95,6 +96,13 @@ function renderPageView(route) {
       return `
         ${renderBreadcrumb('Central de Ajuda (FAQ)')}
         ${renderFaqSection()}
+      `;
+
+    case 'minha-conta':
+    case 'cliente':
+      return `
+        ${renderBreadcrumb('Área do Cliente & Consignador')}
+        ${renderCustomerAccount()}
       `;
 
     case 'pedidos':
@@ -220,6 +228,8 @@ function initApp() {
       setupBlogListeners();
     } else if (route === 'faq') {
       setupFaqListeners();
+    } else if (route === 'minha-conta' || route === 'cliente') {
+      setupCustomerAccountListeners(() => navigateTo('minha-conta'));
     } else if (route === 'pedidos') {
       const pageOrdersBtn = document.getElementById('page-open-orders-btn');
       if (pageOrdersBtn) {

@@ -88,6 +88,8 @@ export function renderHeader() {
           ✨ Frete Grátis acima de R$ 250 • Desapegue e receba via PIX 🌿
         </div>
         <div class="top-bar-links">
+          <a href="#minha-conta" class="top-bar-link">👤 Minha Conta</a>
+          <span class="top-bar-sep">•</span>
           <a href="#" id="top-orders-link" class="top-bar-link">📦 Meus Pedidos</a>
           <span class="top-bar-sep">•</span>
           <a href="#sobre" class="top-bar-link">Sobre Nós</a>
@@ -117,6 +119,10 @@ export function renderHeader() {
           <button class="btn-icon" id="search-toggle-btn" title="Buscar peças" aria-label="Buscar peças">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </button>
+
+          <a href="#minha-conta" class="btn-icon" id="account-btn" title="Minha Conta / Acesso do Cliente" aria-label="Minha Conta">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </a>
 
           <button class="btn-icon" id="fav-drawer-btn" title="Meus Favoritos" aria-label="Meus Favoritos">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
