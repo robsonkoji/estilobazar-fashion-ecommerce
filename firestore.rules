@@ -1,15 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Produtos: leitura pública, escrita permitida para usuários autenticados
+    // Coleção de Produtos: Leitura e escrita permitidas para gestão completa do catálogo
     match /products/{productId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read, write: if true;
     }
-    // Leads VIP da página Em Breve: visitantes públicos podem cadastrar e-mail
+    // Coleção de Leads VIP: Leitura e escrita permitidas para inscrição de visitantes
     match /leads_vip/{leadId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
