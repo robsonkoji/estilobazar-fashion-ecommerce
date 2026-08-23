@@ -398,6 +398,16 @@ export function setupCustomerAccountListeners(onAuthSuccess) {
     });
   }
 
+  const refreshView = () => {
+    const view = document.getElementById('main-content-view');
+    if (view) {
+      view.innerHTML = renderCustomerAccount();
+      setupCustomerAccountListeners(onAuthSuccess);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (onAuthSuccess) onAuthSuccess();
+  };
+
   // Submit Login
   const loginForm = document.getElementById('customer-login-form');
   if (loginForm) {
@@ -412,7 +422,7 @@ export function setupCustomerAccountListeners(onAuthSuccess) {
         cpf: '123.456.789-00'
       };
       setCustomerUser(user);
-      if (onAuthSuccess) onAuthSuccess();
+      refreshView();
     });
   }
 
@@ -429,7 +439,7 @@ export function setupCustomerAccountListeners(onAuthSuccess) {
       };
       setCustomerUser(user);
       alert('🎉 Conta VIP criada com sucesso! Você ganhou 10% OFF no seu primeiro garimpo.');
-      if (onAuthSuccess) onAuthSuccess();
+      refreshView();
     });
   }
 
@@ -438,7 +448,7 @@ export function setupCustomerAccountListeners(onAuthSuccess) {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       setCustomerUser(null);
-      if (onAuthSuccess) onAuthSuccess();
+      refreshView();
     });
   }
 
