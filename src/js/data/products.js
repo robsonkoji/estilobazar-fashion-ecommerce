@@ -207,9 +207,14 @@ export const products = [
 export const categories = [
   "Todos",
   "Vestidos",
-  "Jaquetas",
-  "Saias",
   "Blusas",
+  "Calças",
+  "Coletes",
+  "Shorts",
+  "Bermudas",
+  "Conjuntos",
+  "Saias",
+  "Jaquetas",
   "Calçados",
   "Acessórios"
 ];
