@@ -32,11 +32,10 @@ export async function getProductsFromFirestore(forceRefresh = false) {
       products.push({ id: docSnap.id, ...docSnap.data() });
     });
 
-    // Se o Firestore respondeu com 0 produtos e o banco NUNCA foi semeado, exibe os modelos locais
     const hasBeenSeeded = localStorage.getItem('estilobazar_firestore_seeded') === 'true';
     if (products.length === 0 && !hasBeenSeeded) {
-      console.log('📦 Firestore vazio. Exibindo catálogo modelo...');
-      cachedProducts = [...localFallbackProducts];
+      console.log('📦 Firestore sem dados iniciais. Usando catálogo modelo...');
+      cachedProducts = localFallbackProducts.map(p => ({ ...p }));
       return cachedProducts;
     }
 
@@ -45,7 +44,7 @@ export async function getProductsFromFirestore(forceRefresh = false) {
   } catch (error) {
     console.warn('⚠️ Erro ao consultar Firestore. Usando fallback local:', error.message);
     if (cachedProducts) return cachedProducts;
-    return localFallbackProducts;
+    return localFallbackProducts.map(p => ({ ...p }));
   }
 }
 
@@ -66,7 +65,9 @@ export async function addProductToFirestore(productData) {
     const newProduct = { id: docRef.id, ...docData };
 
     localStorage.setItem('estilobazar_firestore_seeded', 'true');
-    await getProductsFromFirestore(true);
+    if (!cachedProducts) cachedProducts = [];
+    cachedProducts.unshift(newProduct);
+
     return { success: true, product: newProduct };
   } catch (error) {
     console.error('Erro ao adicionar produto:', error);
@@ -89,7 +90,12 @@ export async function updateProductInFirestore(id, productData) {
     };
 
     await updateDoc(docRef, updateData);
-    await getProductsFromFirestore(true);
+    if (cachedProducts) {
+      const idx = cachedProducts.findIndex(p => p.id === id);
+      if (idx !== -1) {
+        cachedProducts[idx] = { ...cachedProducts[idx], ...updateData };
+      }
+    }
     return { success: true };
   } catch (error) {
     console.error('Erro ao atualizar produto:', error);
@@ -97,14 +103,17 @@ export async function updateProductInFirestore(id, productData) {
   }
 }
 
-// Exclui um produto do Firestore
+// Exclui APENAS o produto específico selecionado
 export async function deleteProductFromFirestore(id) {
   try {
     const docRef = doc(db, COLLECTION_NAME, id);
     await deleteDoc(docRef);
 
+    // Remove estritamente APENAS o item correspondente do cache da memória
+    if (cachedProducts) {
+      cachedProducts = cachedProducts.filter(p => p.id !== id);
+    }
     localStorage.setItem('estilobazar_firestore_seeded', 'true');
-    await getProductsFromFirestore(true);
     return { success: true };
   } catch (error) {
     console.error('Erro ao excluir produto:', error);
@@ -126,31 +135,36 @@ export async function uploadProductImage(file) {
   }
 }
 
-// Semeia o banco com o acervo inicial (Suporta forçar recriação)
+// Semeia o banco com o acervo inicial usando IDs determinísticos (prod-1, prod-2, etc.)
 export async function seedProductsToFirestore(force = false) {
   try {
     const productsRef = collection(db, COLLECTION_NAME);
     const snapshot = await getDocs(productsRef);
 
     if (!snapshot.empty && !force) {
-      const confirmForce = confirm('O banco de dados já possui produtos. Deseja adicionar o lote inicial de modelos novamente?');
+      const confirmForce = confirm('O banco de dados já possui produtos. Deseja adicionar o lote de modelos novamente?');
       if (!confirmForce) {
         return { success: false, message: 'Operação cancelada.' };
       }
     }
 
     let count = 0;
+    const seededList = [];
+
     for (const p of localFallbackProducts) {
       const { id, ...pData } = p;
-      await addDoc(collection(db, COLLECTION_NAME), {
+      const productDoc = {
         ...pData,
         createdAt: new Date().toISOString()
-      });
+      };
+      // Grava com o ID explícito (prod-1, prod-2...)
+      await setDoc(doc(db, COLLECTION_NAME, id), productDoc);
+      seededList.push({ id, ...productDoc });
       count++;
     }
 
     localStorage.setItem('estilobazar_firestore_seeded', 'true');
-    await getProductsFromFirestore(true);
+    cachedProducts = seededList;
     return { success: true, count };
   } catch (error) {
     console.error('Erro ao semear banco:', error);
