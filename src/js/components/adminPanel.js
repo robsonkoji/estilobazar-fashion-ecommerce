@@ -8,6 +8,7 @@ import {
 } from '../services/productService.js';
 import { logoutAdmin, getCurrentUser } from '../utils/auth.js';
 import { categories, sizes, conditions, brands } from '../data/products.js';
+import { compressImage } from '../utils/imageCompressor.js';
 
 let adminProducts = [];
 let editingProductId = null;
@@ -419,36 +420,36 @@ function setupModalFormListeners() {
       const file = e.target.files[0];
       if (file) {
         uploadBtn.disabled = true;
-        uploadBtn.textContent = 'Enviando...';
+        uploadBtn.textContent = 'Processando...';
 
-        // 1. Converte e exibe a imagem escolhida imediatamente via FileReader DataURL
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          const dataUrl = event.target.result;
+        try {
+          // 1. Comprime a foto de celular/câmera (15MB -> ~100KB JPEG) para caber no Firestore e subir rápido
+          const compressedDataUrl = await compressImage(file, 1000, 1000, 0.75);
+
           if (previewImg && previewWrap) {
-            previewImg.src = dataUrl;
+            previewImg.src = compressedDataUrl;
             previewWrap.style.display = 'block';
           }
-          if (urlInput) urlInput.value = dataUrl;
+          if (urlInput) urlInput.value = compressedDataUrl;
+
+          uploadBtn.textContent = 'Enviando...';
 
           // 2. Tenta fazer upload para o Firebase Storage
-          try {
-            const res = await uploadProductImage(file);
-            if (res && res.success && res.url) {
-              urlInput.value = res.url;
-              previewImg.src = res.url;
-              console.log('✅ Foto enviada e salva no Firebase Storage:', res.url);
-            } else {
-              console.warn('⚠️ Foto salva localmente (Base64):', res ? res.error : 'Storage offline');
-            }
-          } catch (uploadErr) {
-            console.warn('⚠️ Mantendo imagem local Base64:', uploadErr.message);
+          const res = await uploadProductImage(file);
+          if (res && res.success && res.url) {
+            urlInput.value = res.url;
+            previewImg.src = res.url;
+            console.log('✅ Foto enviada e salva no Firebase Storage:', res.url);
+          } else {
+            console.warn('⚠️ Imagem mantida comprimida em Base64:', res ? res.error : 'Storage offline');
           }
-
+        } catch (err) {
+          console.warn('⚠️ Mantendo imagem no formulário:', err.message);
+        } finally {
+          // Garante que o botão NUNCA fique travado em "Enviando..."
           uploadBtn.disabled = false;
           uploadBtn.textContent = '📷 Upload Foto';
-        };
-        reader.readAsDataURL(file);
+        }
       }
     });
   }
