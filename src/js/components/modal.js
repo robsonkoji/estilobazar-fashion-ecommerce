@@ -7,7 +7,9 @@ export function openProductModal(product) {
   const favs = getFavorites();
   const isFav = favs.some(item => item.id === product.id);
 
-  const galleryImages = product.gallery && product.gallery.length > 0 ? product.gallery : [product.image];
+  const galleryImages = (product.images && product.images.length > 0)
+    ? product.images
+    : ((product.gallery && product.gallery.length > 0) ? product.gallery : [product.image]);
 
   const measurementsHTML = product.measurements
     ? Object.entries(product.measurements)

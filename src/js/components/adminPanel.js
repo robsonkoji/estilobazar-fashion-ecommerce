@@ -162,22 +162,19 @@ export function renderAdminPanel() {
             </div>
           </div>
 
-          <!-- Upload de Imagem -->
+          <!-- Upload de Galeria de Fotos (Multi-fotos) -->
           <div style="margin-bottom: 1rem;">
-            <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem;">Foto Principal (URL ou Arquivo)</label>
+            <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem;">
+              📸 Galeria de Fotos da Peça (Selecione 1 ou mais fotos do celular/computador)
+            </label>
             <div style="display: flex; gap: 0.6rem; align-items: center;">
-              <input type="text" id="p-image-url" class="search-input" style="flex: 1;" placeholder="https://images.unsplash.com/..." />
-              <input type="file" id="p-image-file" accept="image/*" style="display: none;" />
+              <input type="text" id="p-image-url" class="search-input" style="flex: 1;" placeholder="Cole a URL da foto ou selecione os arquivos ao lado..." />
+              <input type="file" id="p-image-file" accept="image/*" multiple style="display: none;" />
               <button type="button" id="p-upload-btn" class="btn btn-outline" style="font-size: 0.8rem; padding: 0.45rem 0.8rem;">
-                📷 Upload Foto
+                📷 + Adicionar Fotos
               </button>
             </div>
-            <div id="p-image-preview" style="margin-top: 0.6rem; display: none; align-items: center; gap: 0.8rem;">
-              <img id="p-preview-img" src="" alt="Preview" style="height: 75px; width: 60px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--c-pink);" />
-              <button type="button" id="p-remove-img-btn" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; border-color: #E05252; color: #C62828;">
-                🗑️ Remover Foto
-              </button>
-            </div>
+            <div id="p-gallery-container" style="display: none;"></div>
           </div>
 
           <div style="margin-bottom: 1rem;">
@@ -349,12 +346,58 @@ function renderTableRows(products) {
   });
 }
 
+function renderGalleryPreviews() {
+  const container = document.getElementById('p-gallery-container');
+  if (!container) return;
+
+  if (currentProductImages.length === 0) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  container.style.display = 'flex';
+  container.style.flexWrap = 'wrap';
+  container.style.gap = '0.8rem';
+  container.style.marginTop = '0.8rem';
+
+  container.innerHTML = currentProductImages.map((imgUrl, idx) => `
+    <div style="position: relative; width: 80px; height: 100px; border-radius: var(--radius-sm); overflow: hidden; border: 2px solid ${idx === 0 ? '#8EC490' : 'rgba(0,0,0,0.12)'}; background: #FFF; box-shadow: 0 2px 5px rgba(0,0,0,0.08);">
+      <img src="${imgUrl}" alt="Foto ${idx + 1}" style="width: 100%; height: 100%; object-fit: cover;" />
+      ${idx === 0 ? `<span style="position: absolute; top: 3px; left: 3px; background: #8EC490; color: #FFF; font-size: 0.65rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">⭐ Capa</span>` : ''}
+      <button type="button" class="btn-remove-gallery-img" data-index="${idx}" style="position: absolute; top: 3px; right: 3px; background: #E05252; color: #FFF; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.3);" title="Remover esta foto">✕</button>
+      ${idx !== 0 ? `<button type="button" class="btn-set-cover-img" data-index="${idx}" style="position: absolute; bottom: 3px; left: 3px; right: 3px; background: rgba(44, 48, 46, 0.85); color: #FFF; border: none; font-size: 0.62rem; padding: 2px 0; border-radius: 3px; cursor: pointer; text-align: center;" title="Definir como Capa">Usar Capa</button>` : ''}
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.btn-remove-gallery-img').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = parseInt(btn.getAttribute('data-index'), 10);
+      currentProductImages.splice(idx, 1);
+      const urlInput = document.getElementById('p-image-url');
+      if (urlInput) urlInput.value = currentProductImages[0] || '';
+      renderGalleryPreviews();
+    });
+  });
+
+  container.querySelectorAll('.btn-set-cover-img').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = parseInt(btn.getAttribute('data-index'), 10);
+      const [selectedImg] = currentProductImages.splice(idx, 1);
+      currentProductImages.unshift(selectedImg);
+      const urlInput = document.getElementById('p-image-url');
+      if (urlInput) urlInput.value = currentProductImages[0] || '';
+      renderGalleryPreviews();
+    });
+  });
+}
+
 function openProductModalForm(product) {
+  editingProductId = product ? product.id : null;
   const modal = document.getElementById('admin-product-modal');
   const title = document.getElementById('admin-modal-title');
-  if (!modal) return;
-
-  editingProductId = product ? product.id : null;
 
   if (title) {
     title.textContent = product ? 'Editar Peça Garimpada' : 'Cadastrar Novo Garimpo';
@@ -367,7 +410,6 @@ function openProductModalForm(product) {
   document.getElementById('p-original-price').value = product && product.originalPrice ? product.originalPrice : '';
   document.getElementById('p-size').value = product ? product.size : '';
   document.getElementById('p-condition').value = product ? product.condition : 'Como Nova';
-  document.getElementById('p-image-url').value = product ? product.image : '';
   document.getElementById('p-description').value = product ? product.description : '';
   document.getElementById('p-featured').checked = product ? !!product.isFeatured : false;
   document.getElementById('p-new').checked = product ? !!product.isNew : false;
@@ -376,21 +418,26 @@ function openProductModalForm(product) {
   const fileInput = document.getElementById('p-image-file');
   if (fileInput) fileInput.value = '';
 
-  const previewWrap = document.getElementById('p-image-preview');
-  const previewImg = document.getElementById('p-preview-img');
-  if (product && product.image) {
-    previewImg.src = product.image;
-    previewWrap.style.display = 'block';
+  // Carrega lista de fotos existentes
+  if (product && product.images && product.images.length > 0) {
+    currentProductImages = [...product.images];
+  } else if (product && product.gallery && product.gallery.length > 0) {
+    currentProductImages = [...product.gallery];
+  } else if (product && product.image) {
+    currentProductImages = [product.image];
   } else {
-    previewImg.src = '';
-    previewWrap.style.display = 'none';
+    currentProductImages = [];
   }
 
-  // Garante que o botão de upload esteja sempre ativo e com o texto correto ao abrir o modal
+  const urlInput = document.getElementById('p-image-url');
+  if (urlInput) urlInput.value = currentProductImages[0] || '';
+
+  renderGalleryPreviews();
+
   const uploadBtn = document.getElementById('p-upload-btn');
   if (uploadBtn) {
     uploadBtn.disabled = false;
-    uploadBtn.textContent = '📷 Upload Foto';
+    uploadBtn.textContent = '📷 + Adicionar Fotos';
   }
 
   modal.classList.add('active');
@@ -407,42 +454,23 @@ function setupModalFormListeners() {
     const uploadBtn = document.getElementById('p-upload-btn');
     if (uploadBtn) {
       uploadBtn.disabled = false;
-      uploadBtn.textContent = '📷 Upload Foto';
+      uploadBtn.textContent = '📷 + Adicionar Fotos';
     }
   };
 
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
-  // Upload Button Trigger & Instant Preview
   const uploadBtn = document.getElementById('p-upload-btn');
   const fileInput = document.getElementById('p-image-file');
   const urlInput = document.getElementById('p-image-url');
-  const previewWrap = document.getElementById('p-image-preview');
-  const previewImg = document.getElementById('p-preview-img');
-
-  const removeImgBtn = document.getElementById('p-remove-img-btn');
-  if (removeImgBtn) {
-    removeImgBtn.addEventListener('click', () => {
-      if (urlInput) urlInput.value = '';
-      if (fileInput) fileInput.value = '';
-      if (previewImg) previewImg.src = '';
-      if (previewWrap) previewWrap.style.display = 'none';
-      if (uploadBtn) {
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = '📷 Upload Foto';
-      }
-    });
-  }
 
   if (urlInput) {
-    urlInput.addEventListener('input', (e) => {
+    urlInput.addEventListener('change', (e) => {
       const url = e.target.value.trim();
-      if (url && previewImg && previewWrap) {
-        previewImg.src = url;
-        previewWrap.style.display = 'block';
-      } else if (!url && previewWrap) {
-        previewWrap.style.display = 'none';
+      if (url && !currentProductImages.includes(url)) {
+        currentProductImages.unshift(url);
+        renderGalleryPreviews();
       }
     });
   }
@@ -450,40 +478,37 @@ function setupModalFormListeners() {
   if (uploadBtn && fileInput) {
     uploadBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (file) {
+      const files = Array.from(e.target.files);
+      if (files.length > 0) {
         uploadBtn.disabled = true;
-        uploadBtn.textContent = 'Processando...';
+        uploadBtn.textContent = `Processando (${files.length})...`;
 
-        try {
-          // 1. Comprime a foto de celular/câmera (15MB -> ~100KB JPEG)
-          const compressedDataUrl = await compressImage(file, 1000, 1000, 0.75);
+        for (const file of files) {
+          try {
+            const compressedDataUrl = await compressImage(file, 1000, 1000, 0.75);
+            currentProductImages.push(compressedDataUrl);
+            renderGalleryPreviews();
 
-          if (previewImg && previewWrap) {
-            previewImg.src = compressedDataUrl;
-            previewWrap.style.display = 'flex';
+            const targetIndex = currentProductImages.length - 1;
+            uploadProductImage(file).then(res => {
+              if (res && res.success && res.url) {
+                currentProductImages[targetIndex] = res.url;
+                if (targetIndex === 0 && urlInput) urlInput.value = res.url;
+                renderGalleryPreviews();
+              }
+            }).catch(err => console.warn('⚠️ Foto mantida em Base64:', err.message));
+          } catch (err) {
+            console.warn('⚠️ Erro ao processar foto:', err.message);
           }
-          if (urlInput) urlInput.value = compressedDataUrl;
-
-          // 2. Restaura o botão IMEDIATAMENTE para permitir novos uploads ou salvar sem travar
-          uploadBtn.disabled = false;
-          uploadBtn.textContent = '📷 Upload Foto';
-
-          // 3. Tenta enviar para o Firebase Storage em segundo plano
-          uploadProductImage(file).then(res => {
-            if (res && res.success && res.url) {
-              urlInput.value = res.url;
-              if (previewImg) previewImg.src = res.url;
-              console.log('✅ Foto enviada e salva no Firebase Storage:', res.url);
-            }
-          }).catch(err => {
-            console.warn('⚠️ Foto mantida comprimida em Base64:', err.message);
-          });
-        } catch (err) {
-          console.warn('⚠️ Erro ao processar imagem:', err.message);
-          uploadBtn.disabled = false;
-          uploadBtn.textContent = '📷 Upload Foto';
         }
+
+        if (urlInput && currentProductImages.length > 0) {
+          urlInput.value = currentProductImages[0];
+        }
+
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '📷 + Adicionar Fotos';
+        fileInput.value = '';
       }
     });
   }
@@ -497,7 +522,13 @@ function setupModalFormListeners() {
         submitBtn.textContent = 'Salvando...';
       }
 
-      const imageUrl = document.getElementById('p-image-url').value.trim();
+      const inputUrl = document.getElementById('p-image-url').value.trim();
+      if (inputUrl && !currentProductImages.includes(inputUrl)) {
+        currentProductImages.unshift(inputUrl);
+      }
+
+      const mainCover = currentProductImages[0] || inputUrl || 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80';
+      const galleryList = currentProductImages.length > 0 ? [...currentProductImages] : [mainCover];
 
       const productData = {
         title: document.getElementById('p-title').value.trim(),
@@ -507,7 +538,9 @@ function setupModalFormListeners() {
         originalPrice: parseFloat(document.getElementById('p-original-price').value) || 0,
         size: document.getElementById('p-size').value.trim(),
         condition: document.getElementById('p-condition').value.trim(),
-        image: imageUrl || 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80',
+        image: mainCover,
+        images: galleryList,
+        gallery: galleryList,
         description: document.getElementById('p-description').value.trim(),
         badge: parseFloat(document.getElementById('p-price').value) <= 99 ? 'Achado < R$99' : 'Brechó Curado',
         isFeatured: document.getElementById('p-featured').checked,
