@@ -12,6 +12,7 @@ import { compressImage } from '../utils/imageCompressor.js';
 
 let adminProducts = [];
 let editingProductId = null;
+let currentProductImages = [];
 
 export function renderAdminPanel() {
   const user = getCurrentUser();
