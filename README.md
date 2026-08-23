@@ -116,4 +116,5 @@ estilobazar/
 ---
 
 ## 📄 Licença
-Este projeto é licenciado sob a Licença MIT.
+Este projeto é de propriedade exclusiva da **EstiloBazar**. Todos os direitos reservados.
+
