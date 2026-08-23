@@ -386,6 +386,13 @@ function openProductModalForm(product) {
     previewWrap.style.display = 'none';
   }
 
+  // Garante que o botão de upload esteja sempre ativo e com o texto correto ao abrir o modal
+  const uploadBtn = document.getElementById('p-upload-btn');
+  if (uploadBtn) {
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = '📷 Upload Foto';
+  }
+
   modal.classList.add('active');
 }
 
@@ -395,7 +402,14 @@ function setupModalFormListeners() {
   const cancelBtn = document.getElementById('admin-modal-cancel');
   const form = document.getElementById('admin-product-form');
 
-  const closeModal = () => modal && modal.classList.remove('active');
+  const closeModal = () => {
+    if (modal) modal.classList.remove('active');
+    const uploadBtn = document.getElementById('p-upload-btn');
+    if (uploadBtn) {
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = '📷 Upload Foto';
+    }
+  };
 
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
@@ -414,6 +428,10 @@ function setupModalFormListeners() {
       if (fileInput) fileInput.value = '';
       if (previewImg) previewImg.src = '';
       if (previewWrap) previewWrap.style.display = 'none';
+      if (uploadBtn) {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '📷 Upload Foto';
+      }
     });
   }
 
@@ -438,30 +456,31 @@ function setupModalFormListeners() {
         uploadBtn.textContent = 'Processando...';
 
         try {
-          // 1. Comprime a foto de celular/câmera (15MB -> ~100KB JPEG) para caber no Firestore e subir rápido
+          // 1. Comprime a foto de celular/câmera (15MB -> ~100KB JPEG)
           const compressedDataUrl = await compressImage(file, 1000, 1000, 0.75);
 
           if (previewImg && previewWrap) {
             previewImg.src = compressedDataUrl;
-            previewWrap.style.display = 'block';
+            previewWrap.style.display = 'flex';
           }
           if (urlInput) urlInput.value = compressedDataUrl;
 
-          uploadBtn.textContent = 'Enviando...';
+          // 2. Restaura o botão IMEDIATAMENTE para permitir novos uploads ou salvar sem travar
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = '📷 Upload Foto';
 
-          // 2. Tenta fazer upload para o Firebase Storage
-          const res = await uploadProductImage(file);
-          if (res && res.success && res.url) {
-            urlInput.value = res.url;
-            previewImg.src = res.url;
-            console.log('✅ Foto enviada e salva no Firebase Storage:', res.url);
-          } else {
-            console.warn('⚠️ Imagem mantida comprimida em Base64:', res ? res.error : 'Storage offline');
-          }
+          // 3. Tenta enviar para o Firebase Storage em segundo plano
+          uploadProductImage(file).then(res => {
+            if (res && res.success && res.url) {
+              urlInput.value = res.url;
+              if (previewImg) previewImg.src = res.url;
+              console.log('✅ Foto enviada e salva no Firebase Storage:', res.url);
+            }
+          }).catch(err => {
+            console.warn('⚠️ Foto mantida comprimida em Base64:', err.message);
+          });
         } catch (err) {
-          console.warn('⚠️ Mantendo imagem no formulário:', err.message);
-        } finally {
-          // Garante que o botão NUNCA fique travado em "Enviando..."
+          console.warn('⚠️ Erro ao processar imagem:', err.message);
           uploadBtn.disabled = false;
           uploadBtn.textContent = '📷 Upload Foto';
         }
