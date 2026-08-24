@@ -112,7 +112,10 @@ export async function sendWelcomeVipEmail(userEmail) {
     from: 'EstiloBazar <contato@estilobazar.com.br>',
     to: [userEmail],
     subject: '🎁 Seja bem-vinda ao EstiloBazar! Seu cupom 10% OFF chegou ✨',
-    html: emailHtml
+    html: emailHtml,
+    headers: {
+      'X-Entity-Ref-ID': 'estilobazar-vip-' + Date.now()
+    }
   };
 
   try {
