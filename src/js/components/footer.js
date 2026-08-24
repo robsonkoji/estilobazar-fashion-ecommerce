@@ -149,12 +149,12 @@ export function setupFooterListeners() {
           // Dispara o e-mail transacional via Resend
           sendWelcomeVipEmail(email);
 
-          alert(`🎉 Cadastro VIP Confirmado!\n\nSeu e-mail (${email}) foi cadastrado com sucesso.\nEnviamos um e-mail de boas-vindas com o seu cupom ESTILO10 (10% OFF)!`);
-          showToast('Cupom ESTILO10 ativado para o seu e-mail! 💌');
+          // Exibe Modal Visual Bonito do Cupom na Tela
+          showVipCouponModal(email);
           input.value = '';
         } catch (err) {
           console.warn('⚠️ Salvo com suporte offline:', err.message);
-          alert(`🎉 Cadastro Confirmado!\n\nUse o cupom ESTILO10 para 10% OFF no seu primeiro garimpo!`);
+          showVipCouponModal(email);
           input.value = '';
         } finally {
           if (submitBtn) {
@@ -165,6 +165,70 @@ export function setupFooterListeners() {
       }
     });
   }
+
+function showVipCouponModal(email) {
+  let modal = document.getElementById('vip-coupon-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'vip-coupon-modal';
+    modal.className = 'modal-overlay';
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div class="modal-container" style="max-width: 500px; text-align: center; padding: 2.5rem 2rem;">
+      <button class="modal-close" id="vip-modal-close">✕</button>
+      
+      <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">🎁</div>
+      <span class="badge-curated" style="margin-bottom: 0.8rem;">Bem-vinda à VIP List</span>
+      <h2 style="font-size: 1.8rem; font-family: var(--font-heading); margin-bottom: 0.5rem;">Seu Cupom de 10% OFF Chegou!</h2>
+      
+      <p style="font-size: 0.88rem; color: var(--c-text-muted); margin-bottom: 1.5rem;">
+        Cadastrado com sucesso para: <strong style="color: var(--c-text-main);">${email}</strong>
+      </p>
+
+      <div style="background: var(--c-mint-light); border: 2px dashed var(--c-mint-dark); padding: 1.2rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;">
+        <span style="font-size: 0.78rem; color: var(--c-text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Use o Cupom no Checkout:</span>
+        <div style="font-size: 2.2rem; font-weight: 800; color: var(--c-text-main); letter-spacing: 3px; margin: 0.4rem 0;" id="vip-coupon-code">ESTILO10</div>
+        <button id="copy-vip-coupon-btn" class="btn btn-outline" style="font-size: 0.8rem; padding: 0.35rem 0.9rem; background: #FFF;">
+          📋 Copiar Código
+        </button>
+      </div>
+
+      <p style="font-size: 0.82rem; color: var(--c-text-muted); margin-bottom: 1.5rem;">
+        💡 <em>Também enviamos uma cópia para o seu e-mail. Se não encontrar na caixa de entrada, verifique a pasta de Spam/Promoções.</em>
+      </p>
+
+      <a href="#loja" id="vip-go-shop-btn" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+        🛍️ Garimpar com 10% OFF Agora
+      </a>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+  modal.style.opacity = '1';
+  modal.style.pointerEvents = 'auto';
+  modal.classList.add('active');
+
+  const closeBtn = document.getElementById('vip-modal-close');
+  const shopBtn = document.getElementById('vip-go-shop-btn');
+  const closeModal = () => {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  };
+
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (shopBtn) shopBtn.addEventListener('click', closeModal);
+
+  const copyBtn = document.getElementById('copy-vip-coupon-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText('ESTILO10');
+      copyBtn.textContent = '✅ Copiado!';
+      setTimeout(() => { copyBtn.textContent = '📋 Copiar Código'; }, 2500);
+    });
+  }
+}
 
   const sizeGuideBtn = document.getElementById('open-size-guide-btn');
   if (sizeGuideBtn) {
