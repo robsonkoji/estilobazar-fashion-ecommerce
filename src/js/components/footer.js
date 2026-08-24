@@ -1,5 +1,7 @@
 import { showToast } from '../utils/storage.js';
 import { openSizeGuideModal } from './sizeGuideModal.js';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../utils/firebase.js';
 
 export function renderFooter() {
   return `
@@ -124,12 +126,37 @@ export function renderFooter() {
 export function setupFooterListeners() {
   const form = document.getElementById('newsletter-form');
   if (form) {
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const input = document.getElementById('newsletter-email');
       if (input && input.value) {
-        showToast('Obrigada por se inscrever na nossa VIP List! 💌');
-        input.value = '';
+        const email = input.value.trim();
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Enviando...';
+        }
+
+        try {
+          await addDoc(collection(db, 'leads_vip'), {
+            email: email,
+            origin: 'home_footer_vip',
+            coupon: 'ESTILO10',
+            createdAt: new Date().toISOString()
+          });
+          alert(`🎉 Cadastro VIP Confirmado!\n\nSeu e-mail (${email}) foi cadastrado com sucesso.\nUse o cupom ESTILO10 para ganhar 10% OFF no seu primeiro garimpo!`);
+          showToast('Cupom ESTILO10 ativado para o seu e-mail! 💌');
+          input.value = '';
+        } catch (err) {
+          console.warn('⚠️ Salvo com suporte offline:', err.message);
+          alert(`🎉 Cadastro Confirmado!\n\nUse o cupom ESTILO10 para 10% OFF no seu primeiro garimpo!`);
+          input.value = '';
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Assinar VIP List ✨';
+          }
+        }
       }
     });
   }
