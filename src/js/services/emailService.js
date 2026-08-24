@@ -73,7 +73,7 @@ export async function sendWelcomeVipEmail(userEmail) {
   };
 
   try {
-    let response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
@@ -81,19 +81,6 @@ export async function sendWelcomeVipEmail(userEmail) {
       },
       body: JSON.stringify(payload)
     });
-
-    if (!response.ok) {
-      // Fallback para onboarding@resend.dev enquanto o domínio customizado finaliza propagação DNS
-      payload.from = 'EstiloBazar <onboarding@resend.dev>';
-      response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-    }
 
     if (response.ok) {
       console.log('✅ E-mail VIP enviado com sucesso via Resend para:', userEmail);
