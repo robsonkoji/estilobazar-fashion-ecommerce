@@ -1,5 +1,5 @@
 // Chave do Resend decodificada com segurança em runtime
-const RESEND_API_KEY = atob('cmVfQ1pXZ2pBa18zZTg0YnQzVUNmQUNNOXVZY29CZkdVaVc=');
+const RESEND_API_KEY = atob('cmVfQ1paV2ZqQWtfM2U4NGJ0M1VDZkFDTTl1WWNvQmZHVWpX');
 
 export async function sendWelcomeVipEmail(userEmail) {
   const emailHtml = `
