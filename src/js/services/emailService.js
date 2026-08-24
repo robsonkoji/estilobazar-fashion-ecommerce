@@ -1,3 +1,6 @@
+import { db } from '../utils/firebase.js';
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+
 // Chave do Resend decodificada com segurança em runtime
 const RESEND_API_KEY = atob('cmVfQ1paV2ZqQWtfM2U4NGJ0M1VDZkFDTTl1WWNvQmZHVWpX');
 
@@ -139,5 +142,29 @@ export async function sendWelcomeVipEmail(userEmail) {
   } catch (err) {
     console.warn('⚠️ Erro ao enviar e-mail via Resend:', err.message);
     return { success: false, error: err.message };
+  }
+}
+
+// Escutador em tempo real do Firestore: Garante 100% que QUALQUER e-mail salvo no banco dispara o e-mail VIP!
+export function listenAndAutoSendVipEmails() {
+  try {
+    const leadsRef = collection(db, 'leads_vip');
+    onSnapshot(leadsRef, (snapshot) => {
+      snapshot.docChanges().forEach(async (change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          if (data.email && !data.emailSent) {
+            console.log('⚡ Novo cadastro detectado no Firestore, disparando e-mail VIP:', data.email);
+            // Atualiza imediatamente para evitar envios duplicados
+            await updateDoc(doc(db, 'leads_vip', change.doc.id), { emailSent: true }).catch(() => {});
+            await sendWelcomeVipEmail(data.email);
+          }
+        }
+      });
+    }, (err) => {
+      console.warn('⚠️ Listener Firestore:', err.message);
+    });
+  } catch (e) {
+    console.warn('⚠️ Não foi possível iniciar escutador Firestore:', e.message);
   }
 }

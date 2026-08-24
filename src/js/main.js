@@ -31,6 +31,7 @@ import { renderAdminLogin, setupAdminLoginListeners } from './components/adminLo
 import { renderAdminPanel, setupAdminPanelListeners } from './components/adminPanel.js';
 import { renderComingSoonPage, setupComingSoonListeners } from './components/comingSoon.js';
 import { renderCustomerAccount, setupCustomerAccountListeners } from './components/customerAccount.js';
+import { listenAndAutoSendVipEmails } from './services/emailService.js';
 
 // Flag de Modo de Manutenção / Em Breve (defina como false para lançar publicamente!)
 const IS_COMING_SOON_MODE = true;
@@ -192,6 +193,7 @@ function initApp() {
     updateCartDrawer();
     updateFavDrawer();
     setupSocialProofListeners();
+    listenAndAutoSendVipEmails();
 
     // Setup Botão Sair da Prévia se estiver ativo
     const exitPreviewBtn = document.getElementById('exit-preview-btn');
