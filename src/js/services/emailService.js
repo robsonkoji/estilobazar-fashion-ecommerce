@@ -122,20 +122,29 @@ export async function sendWelcomeVipEmail(userEmail) {
   };
 
   try {
-    // Disparo primário via Resend API (Domínio Verificado estilobazar.com.br)
-    const response = await fetch('https://api.resend.com/emails', {
+    // 1. Tenta envio pelo endpoint serverless da aplicação (/api/send-email) sem bloqueio de CORS
+    let response = await fetch('/api/send-email', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail })
+    }).catch(() => null);
 
-    if (response.ok) {
+    // 2. Se a rota serverless não respondeu (ex: ambiente estático puro), tenta disparo direto da API
+    if (!response || !response.ok) {
+      response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    if (response && response.ok) {
       console.log('✅ E-mail VIP enviado com sucesso via Resend para:', userEmail);
     } else {
-      const errData = await response.json().catch(() => ({}));
+      const errData = response ? await response.json().catch(() => ({})) : {};
       console.warn('⚠️ Resend API:', errData);
     }
 
