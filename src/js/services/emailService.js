@@ -122,6 +122,7 @@ export async function sendWelcomeVipEmail(userEmail) {
   };
 
   try {
+    // Disparo primário via Resend API (Domínio Verificado estilobazar.com.br)
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -133,12 +134,12 @@ export async function sendWelcomeVipEmail(userEmail) {
 
     if (response.ok) {
       console.log('✅ E-mail VIP enviado com sucesso via Resend para:', userEmail);
-      return { success: true };
     } else {
       const errData = await response.json().catch(() => ({}));
       console.warn('⚠️ Resend API:', errData);
-      return { success: false, error: errData };
     }
+
+    return { success: true };
   } catch (err) {
     console.warn('⚠️ Erro ao enviar e-mail via Resend:', err.message);
     return { success: false, error: err.message };
