@@ -1,5 +1,6 @@
 import { db } from '../utils/firebase.js';
 import { collection, addDoc } from 'firebase/firestore';
+import { sendWelcomeVipEmail } from '../services/emailService.js';
 
 export function renderComingSoonPage() {
   return `
@@ -130,11 +131,14 @@ export function setupComingSoonListeners() {
         email,
         subscribedAt: new Date().toISOString()
       });
+      // Dispara o e-mail VIP de Boas-Vindas via Resend
+      await sendWelcomeVipEmail(email);
     } catch (err) {
       console.warn('Salvo localmente:', err.message);
       const leads = JSON.parse(localStorage.getItem('estilobazar_leads') || '[]');
       leads.push({ email, subscribedAt: new Date().toISOString() });
       localStorage.setItem('estilobazar_leads', JSON.stringify(leads));
+      sendWelcomeVipEmail(email);
     }
 
     if (form) form.style.display = 'none';
