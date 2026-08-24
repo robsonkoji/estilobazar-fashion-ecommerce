@@ -2,6 +2,7 @@ import { showToast } from '../utils/storage.js';
 import { openSizeGuideModal } from './sizeGuideModal.js';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../utils/firebase.js';
+import { sendWelcomeVipEmail } from '../services/emailService.js';
 
 export function renderFooter() {
   return `
@@ -144,7 +145,11 @@ export function setupFooterListeners() {
             coupon: 'ESTILO10',
             createdAt: new Date().toISOString()
           });
-          alert(`🎉 Cadastro VIP Confirmado!\n\nSeu e-mail (${email}) foi cadastrado com sucesso.\nUse o cupom ESTILO10 para ganhar 10% OFF no seu primeiro garimpo!`);
+          
+          // Dispara o e-mail transacional via Resend
+          sendWelcomeVipEmail(email);
+
+          alert(`🎉 Cadastro VIP Confirmado!\n\nSeu e-mail (${email}) foi cadastrado com sucesso.\nEnviamos um e-mail de boas-vindas com o seu cupom ESTILO10 (10% OFF)!`);
           showToast('Cupom ESTILO10 ativado para o seu e-mail! 💌');
           input.value = '';
         } catch (err) {
