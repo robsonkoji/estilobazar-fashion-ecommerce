@@ -404,7 +404,7 @@ export function openCheckoutModal() {
           paymentMethod: paymentMethod,
           status: paymentMethod === 'pix' ? 'Aguardando Pagamento PIX' : 'Pagamento Aprovado',
           step: paymentMethod === 'pix' ? 1 : 2, // 1: Criado, 2: Em Separação, 3: Enviado
-          trackingCode: 'BR' + Math.floor(100000000 + Math.random() * 900000000) + 'SP'
+          trackingCode: null // Será preenchido pelo Administrador ao despachar nos Correios
         };
 
         try {

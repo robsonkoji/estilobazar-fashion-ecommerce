@@ -284,7 +284,18 @@ function renderTabContent(customer) {
               <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem; background: #FFF; padding: 0.8rem 1rem; border-radius: var(--radius-sm);">
                 <div>
                   <span style="font-size: 0.82rem; color: var(--c-text-muted);">Pagamento: <strong>${order.paymentMethod}</strong></span>
-                  ${order.trackingCode ? `<div style="font-size: 0.82rem; color: var(--c-text-muted); margin-top: 0.2rem;">Rastreio Correios: <strong style="color: var(--c-pink-dark);">${order.trackingCode}</strong></div>` : ''}
+                  ${order.trackingCode ? `
+                    <div style="font-size: 0.82rem; color: var(--c-text-muted); margin-top: 0.2rem;">
+                      Rastreio Correios: <strong style="color: var(--c-pink-dark);">${order.trackingCode}</strong>
+                      <a href="https://rastreamento.correios.com.br/app/index.php?codigo=${order.trackingCode}" target="_blank" class="btn btn-outline" style="font-size: 0.72rem; padding: 0.15rem 0.5rem; margin-left: 0.4rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.2rem;">
+                        🔗 Rastrear nos Correios
+                      </a>
+                    </div>
+                  ` : `
+                    <div style="font-size: 0.82rem; color: var(--c-text-muted); margin-top: 0.2rem;">
+                      Rastreio Correios: <span style="color: #D97706; font-weight: 600;">⏳ Aguardando Postagem (Até 24h úteis)</span>
+                    </div>
+                  `}
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
                   <span style="font-size: 1.1rem; font-weight: 700; margin-right: 0.5rem;">Total: R$ ${order.total.toFixed(2).replace('.', ',')}</span>

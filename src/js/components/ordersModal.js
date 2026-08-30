@@ -59,7 +59,14 @@ export function openOrdersModal() {
               </div>
 
               <div style="font-size: 0.85rem; color: var(--c-text-muted); margin-bottom: 0.8rem;">
-                Código de Rastreamento Correios: <strong style="color: var(--c-text-main);">${order.trackingCode}</strong>
+                ${order.trackingCode ? `
+                  Código de Rastreamento: <strong style="color: var(--c-pink-dark); font-size: 0.95rem;">${order.trackingCode}</strong>
+                  <a href="https://rastreamento.correios.com.br/app/index.php?codigo=${order.trackingCode}" target="_blank" class="btn btn-outline" style="font-size: 0.72rem; padding: 0.2rem 0.6rem; margin-left: 0.5rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.2rem;">
+                    🔗 Acompanhar nos Correios
+                  </a>
+                ` : `
+                  Código de Rastreamento: <span style="color: #D97706; font-weight: 600;">⏳ Aguardando Postagem (Até 24h úteis)</span>
+                `}
               </div>
 
               <div style="display: flex; gap: 0.6rem; overflow-x: auto; padding-bottom: 0.5rem;">
