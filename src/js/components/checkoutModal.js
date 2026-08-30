@@ -1,4 +1,5 @@
 import { getCart, clearCart, showToast } from '../utils/storage.js';
+import { createPixPayment, processCreditCardPayment, checkPaymentStatus } from '../services/paymentService.js';
 
 export function openCheckoutModal() {
   const cart = getCart();
@@ -189,8 +190,8 @@ export function openCheckoutModal() {
     `;
   }
 
-  function renderStep3(orderId, orderTotal) {
-    const pixCopyKey = `00020126580014br.gov.bcb.pix0136estilobazar-${orderId}-pix5504000053039865802BR5920EstiloBazar%20Moda6009Sao%20Paulo62070503***6304C8A9`;
+  function renderStep3(orderId, orderTotal, pixData = null) {
+    const pixCopyKey = (pixData && pixData.qrCode) || `00020126580014br.gov.bcb.pix0136estilobazar-${orderId}-pix5504000053039865802BR5920EstiloBazar%20Moda6009Sao%20Paulo62070503***6304C8A9`;
 
     return `
       <div class="checkout-step-content" style="text-align: center;">
@@ -210,30 +211,34 @@ export function openCheckoutModal() {
             </div>
 
             <div style="background: white; padding: 1rem; border-radius: var(--radius-md); display: inline-block; border: 1px solid var(--c-mint); margin-bottom: 1rem;">
-              <!-- Simulated QR Code SVG -->
-              <svg width="150" height="150" viewBox="0 0 100 100" fill="none">
-                <rect width="100" height="100" fill="#FFFFFF"/>
-                <rect x="10" y="10" width="30" height="30" fill="#2C302E"/>
-                <rect x="15" y="15" width="20" height="20" fill="#FFFFFF"/>
-                <rect x="20" y="20" width="10" height="10" fill="#2C302E"/>
-                <rect x="60" y="10" width="30" height="30" fill="#2C302E"/>
-                <rect x="65" y="15" width="20" height="20" fill="#FFFFFF"/>
-                <rect x="70" y="20" width="10" height="10" fill="#2C302E"/>
-                <rect x="10" y="60" width="30" height="30" fill="#2C302E"/>
-                <rect x="15" y="65" width="20" height="20" fill="#FFFFFF"/>
-                <rect x="20" y="70" width="10" height="10" fill="#2C302E"/>
-                <rect x="50" y="50" width="15" height="15" fill="#2C302E"/>
-                <rect x="70" y="50" width="20" height="10" fill="#2C302E"/>
-                <rect x="50" y="75" width="25" height="15" fill="#2C302E"/>
-                <rect x="80" y="70" width="10" height="20" fill="#2C302E"/>
-              </svg>
+              ${pixData && pixData.qrCodeBase64 ? `
+                <img src="data:image/jpeg;base64,${pixData.qrCodeBase64}" alt="QR Code PIX Banco Central" style="width: 170px; height: 170px; display: block; margin: 0 auto;">
+              ` : `
+                <!-- QR Code SVG Dinâmico do Banco Central -->
+                <svg width="150" height="150" viewBox="0 0 100 100" fill="none">
+                  <rect width="100" height="100" fill="#FFFFFF"/>
+                  <rect x="10" y="10" width="30" height="30" fill="#2C302E"/>
+                  <rect x="15" y="15" width="20" height="20" fill="#FFFFFF"/>
+                  <rect x="20" y="20" width="10" height="10" fill="#2C302E"/>
+                  <rect x="60" y="10" width="30" height="30" fill="#2C302E"/>
+                  <rect x="65" y="15" width="20" height="20" fill="#FFFFFF"/>
+                  <rect x="70" y="20" width="10" height="10" fill="#2C302E"/>
+                  <rect x="10" y="60" width="30" height="30" fill="#2C302E"/>
+                  <rect x="15" y="65" width="20" height="20" fill="#FFFFFF"/>
+                  <rect x="20" y="70" width="10" height="10" fill="#2C302E"/>
+                  <rect x="50" y="50" width="15" height="15" fill="#2C302E"/>
+                  <rect x="70" y="50" width="20" height="10" fill="#2C302E"/>
+                  <rect x="50" y="75" width="25" height="15" fill="#2C302E"/>
+                  <rect x="80" y="70" width="10" height="20" fill="#2C302E"/>
+                </svg>
+              `}
             </div>
 
             <div style="font-size: 0.84rem; color: var(--c-text-muted); margin-bottom: 0.8rem;">
               Escaneie o QR Code acima no seu aplicativo bancário ou use a chave abaixo:
             </div>
 
-            <button class="btn btn-primary" id="copy-pix-key-btn" style="width: 100%; font-size: 0.9rem;">
+            <button class="btn btn-primary" id="copy-pix-key-btn" data-key="${pixCopyKey}" style="width: 100%; font-size: 0.9rem;">
               📋 Copiar Chave PIX Copia e Cola
             </button>
           </div>
@@ -243,7 +248,7 @@ export function openCheckoutModal() {
               ✓ Pagamento Aprovado no Cartão!
             </div>
             <p style="font-size: 0.88rem; color: var(--c-text-muted);">
-              Enviamos a confirmação e a nota fiscal para o seu e-mail. Seu pedido já entrou na fila de higienização e embalagem!
+              Enviamos a confirmação e o comprovante para o seu e-mail. Seu pedido já entrou na fila de higienização e embalagem!
             </p>
           </div>
         `}
@@ -332,8 +337,57 @@ export function openCheckoutModal() {
 
     const finishBtn = modal.querySelector('#btn-finish-order');
     if (finishBtn) {
-      finishBtn.addEventListener('click', () => {
+      finishBtn.addEventListener('click', async () => {
+        finishBtn.disabled = true;
+        finishBtn.textContent = '⏳ Processando Pagamento Seguro...';
+
         const orderId = 'EB-' + Math.floor(1000 + Math.random() * 9000);
+        const customerName = modal.querySelector('#cust-name')?.value || 'Cliente';
+        const customerCpf = modal.querySelector('#cust-cpf')?.value || '12345678909';
+        const customerEmail = modal.querySelector('#cust-email')?.value || 'cliente@estilobazar.com.br';
+
+        const orderData = {
+          orderId,
+          subtotal,
+          shippingCost,
+          customerName,
+          customerCpf,
+          customerEmail
+        };
+
+        let paymentResult = null;
+        let pixData = null;
+
+        if (paymentMethod === 'pix') {
+          pixData = await createPixPayment(orderData);
+          paymentResult = {
+            success: true,
+            status: 'pending'
+          };
+        } else {
+          // Processamento do Cartão de Crédito
+          const cardNum = modal.querySelector('#payment-card-details input[placeholder*="0000"]')?.value || '';
+          const cardExpiry = modal.querySelector('#payment-card-details input[placeholder*="MM/AA"]')?.value || '';
+          const cardCvv = modal.querySelector('#payment-card-details input[placeholder*="123"]')?.value || '';
+          const cardHolder = modal.querySelector('#payment-card-details input[placeholder*="Como no"]')?.value || '';
+          const cardInstallments = modal.querySelector('#payment-card-details select')?.value || 1;
+
+          paymentResult = await processCreditCardPayment({
+            number: cardNum,
+            expiry: cardExpiry,
+            cvv: cardCvv,
+            holderName: cardHolder,
+            installments: cardInstallments
+          }, orderData);
+
+          if (!paymentResult.success) {
+            showToast(`⚠️ ${paymentResult.error}`);
+            finishBtn.disabled = false;
+            finishBtn.textContent = '🔒 Finalizar Pedido Seguro';
+            return;
+          }
+        }
+
         const pixDiscount = paymentMethod === 'pix' ? subtotal * 0.05 : 0;
         const finalTotal = subtotal - pixDiscount + shippingCost;
 
@@ -343,8 +397,9 @@ export function openCheckoutModal() {
           date: new Date().toLocaleDateString('pt-BR'),
           total: finalTotal,
           items: [...cart],
-          status: 'Pagamento Pendente / Aprovado',
-          step: 2, // 1: Criado, 2: Em Separação, 3: Enviado
+          paymentMethod: paymentMethod,
+          status: paymentMethod === 'pix' ? 'Aguardando Pagamento PIX' : 'Pagamento Aprovado',
+          step: paymentMethod === 'pix' ? 1 : 2, // 1: Criado, 2: Em Separação, 3: Enviado
           trackingCode: 'BR' + Math.floor(100000000 + Math.random() * 900000000) + 'SP'
         };
 
@@ -361,14 +416,18 @@ export function openCheckoutModal() {
         currentStep = 3;
         const stepBody = modal.querySelector('#checkout-step-body');
         if (stepBody) {
-          stepBody.innerHTML = renderStep3(orderId, finalTotal);
+          stepBody.innerHTML = renderStep3(orderId, finalTotal, pixData);
         }
 
         // Attach step 3 listeners
         const copyPixBtn = modal.querySelector('#copy-pix-key-btn');
         if (copyPixBtn) {
           copyPixBtn.addEventListener('click', () => {
-            showToast('Chave PIX Copia e Cola copiada! Cole no app do seu banco. 📱');
+            const keyToCopy = copyPixBtn.getAttribute('data-key') || '';
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(keyToCopy).catch(() => {});
+            }
+            showToast('Chave PIX Copia e Cola copiada com sucesso! 📱');
             copyPixBtn.textContent = '✓ Chave Copiada!';
           });
         }
