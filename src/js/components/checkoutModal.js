@@ -205,7 +205,11 @@ export function openCheckoutModal() {
 
         ${paymentMethod === 'pix' ? `
           <div class="glass-panel" style="padding: 1.8rem; max-width: 440px; margin: 0 auto 1.5rem auto; text-align: center;">
-            <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 0.6rem;">Pagamento via PIX (5% OFF Aplicado)</div>
+            <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; margin-bottom: 1rem; font-size: 0.82rem; color: #92400E; font-weight: 600;">
+              🔥 <strong>Reserva Exclusiva Garantida:</strong> Esta peça é única! Reservamos ela para você por <span id="pix-timer-countdown" style="color: #DC2626; font-weight: 800;">14:59</span> min.
+            </div>
+            
+            <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 0.4rem;">Pagamento via PIX (5% OFF Aplicado)</div>
             <div style="font-size: 1.6rem; font-weight: 700; color: var(--c-text-main); margin-bottom: 1rem;">
               Total: R$ ${orderTotal.toFixed(2).replace('.', ',')}
             </div>

@@ -519,29 +519,15 @@ export function setupCustomerAccountListeners(onAuthSuccess) {
     });
   });
 
-  // Ação de Cancelamento de Pedido
+  // Ação de Cancelamento de Pedido com Modal de Retenção Shopify (+10% Bônus em Crédito)
   document.querySelectorAll('.btn-cancel-order-action').forEach(btn => {
     btn.addEventListener('click', () => {
       const orderId = btn.getAttribute('data-id');
-      const confirmCancel = confirm(`⚠️ Tem certeza que deseja cancelar a compra do Pedido #${orderId}?\n\nEsta ação liberará os itens garimpados de volta para a loja.`);
-      
-      if (confirmCancel) {
-        try {
-          const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
-          const targetIndex = orders.findIndex(o => String(o.id) === String(orderId));
-          
-          if (targetIndex !== -1) {
-            orders[targetIndex].status = 'Cancelado';
-            orders[targetIndex].statusColor = '#EF4444';
-            localStorage.setItem('estilobazar_orders', JSON.stringify(orders));
-          }
-        } catch (e) {
-          console.error(e);
-        }
+      const allOrders = getAllCustomerOrders();
+      const targetOrder = allOrders.find(o => String(o.id) === String(orderId)) || {};
+      const orderTotal = targetOrder.total || 100;
 
-        alert(`✅ O Pedido #${orderId} foi cancelado com sucesso.`);
-        refreshView();
-      }
+      openCancelRetentionModal(orderId, orderTotal, refreshView);
     });
   });
 
@@ -583,6 +569,124 @@ export function setupCustomerAccountListeners(onAuthSuccess) {
       };
       setCustomerUser(updated);
       alert('✅ Seus dados cadastrais foram atualizados com sucesso!');
+    });
+  }
+}
+
+/**
+ * Modal Interativo de Cancelamento & Retenção de Clientes (Estilo Shopify / Farfetch)
+ * Oferece Crédito em Conta com +10% Bônus ou Reembolso Integral (Art. 49 CDC)
+ */
+function openCancelRetentionModal(orderId, orderTotal, refreshCallback) {
+  const existing = document.getElementById('cancel-retention-modal');
+  if (existing) existing.remove();
+
+  const bonusAmount = orderTotal * 0.10;
+  const creditTotal = orderTotal + bonusAmount;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  modal.id = 'cancel-retention-modal';
+  modal.style.zIndex = '9999';
+
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width: 540px; padding: 2rem; border-radius: var(--radius-lg); text-align: center;">
+      <button class="modal-close" id="cancel-modal-close-btn">&times;</button>
+      
+      <div style="font-size: 2.8rem; margin-bottom: 0.5rem;">💌</div>
+      <span class="badge-curated" style="background: #FDF0F0; color: #E4A1A1; margin-bottom: 0.6rem;">Garantia &amp; Atendimento EstiloBazar</span>
+      
+      <h3 style="font-family: var(--font-heading); font-size: 1.5rem; color: var(--c-text-main); margin-bottom: 0.4rem;">
+        Deseja cancelar o Pedido #${orderId}?
+      </h3>
+      <p style="font-size: 0.88rem; color: var(--c-text-muted); margin-bottom: 1.5rem;">
+        Valor do Pedido: <strong>R$ ${orderTotal.toFixed(2).replace('.', ',')}</strong>. Escolha como prefere prosseguir:
+      </p>
+
+      <!-- Opção 1: Crédito na Loja (+10% Bônus) -->
+      <div style="background: linear-gradient(135deg, #F0F8F1 0%, #FFFFFF 100%); border: 2px solid #8EC490; border-radius: var(--radius-md); padding: 1.2rem; margin-bottom: 1.2rem; text-align: left; cursor: pointer; position: relative;" id="option-credit-bonus">
+        <span style="position: absolute; top: -10px; right: 15px; background: #8EC490; color: #FFF; font-size: 0.72rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 99px; text-transform: uppercase;">
+          Recomendado (+10% Bônus)
+        </span>
+        <div style="font-weight: 700; font-size: 1rem; color: #2C302E; margin-bottom: 0.3rem;">
+          🎁 Converter em Crédito na Loja (+10% de Bônus da Loja)
+        </div>
+        <div style="font-size: 1.25rem; font-weight: 800; color: #2E7D32; margin-bottom: 0.4rem;">
+          Você recebe: R$ ${creditTotal.toFixed(2).replace('.', ',')} em Saldo
+        </div>
+        <p style="font-size: 0.8rem; color: var(--c-text-muted); margin: 0;">
+          O saldo é adicionado na sua conta imediatamente para garimpar qualquer outra peça do acervo sem esperar prazos bancários.
+        </p>
+        <button class="btn btn-primary" id="btn-accept-bonus-credit" style="width: 100%; margin-top: 1rem; font-size: 0.88rem;">
+          ✨ Quero Saldo com +10% Bônus (R$ ${creditTotal.toFixed(2).replace('.', ',')})
+        </button>
+      </div>
+
+      <!-- Opção 2: Reembolso Integral (Art. 49 CDC) -->
+      <div style="border: 1px solid #E5E7EB; border-radius: var(--radius-md); padding: 1rem; text-align: left;" id="option-full-refund">
+        <div style="font-weight: 700; font-size: 0.92rem; color: var(--c-text-main); margin-bottom: 0.2rem;">
+          💳 Reembolso Integral via PIX / Cartão (Art. 49 CDC)
+        </div>
+        <p style="font-size: 0.78rem; color: var(--c-text-muted); margin-bottom: 0.8rem;">
+          O valor de R$ ${orderTotal.toFixed(2).replace('.', ',')} será estornado integralmente na mesma forma de pagamento utilizada.
+        </p>
+        <button class="btn btn-outline" id="btn-confirm-full-refund" style="width: 100%; font-size: 0.82rem; color: #DC2626; border-color: #FCA5A5;">
+          ❌ Confirmar Reembolso Integral (R$ ${orderTotal.toFixed(2).replace('.', ',')})
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const closeBtn = modal.querySelector('#cancel-modal-close-btn');
+  if (closeBtn) closeBtn.addEventListener('click', () => modal.remove());
+
+  // Ação 1: Bônus de Crédito (+10%)
+  const bonusBtn = modal.querySelector('#btn-accept-bonus-credit');
+  if (bonusBtn) {
+    bonusBtn.addEventListener('click', () => {
+      try {
+        const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+        const targetIndex = orders.findIndex(o => String(o.id) === String(orderId));
+        if (targetIndex !== -1) {
+          orders[targetIndex].status = 'Convertido em Crédito (+10% Bônus)';
+          orders[targetIndex].statusColor = '#10B981';
+          localStorage.setItem('estilobazar_orders', JSON.stringify(orders));
+        }
+
+        // Adiciona o saldo na carteira da cliente
+        const currentWallet = Number(localStorage.getItem('estilobazar_wallet_balance') || '0');
+        localStorage.setItem('estilobazar_wallet_balance', (currentWallet + creditTotal).toString());
+      } catch (e) {
+        console.error(e);
+      }
+
+      alert(`🎉 Sucesso! R$ ${creditTotal.toFixed(2).replace('.', ',')} foram adicionados ao seu saldo da conta EstiloBazar! Você já pode usar no próximo garimpo.`);
+      modal.remove();
+      if (refreshCallback) refreshCallback();
+    });
+  }
+
+  // Ação 2: Reembolso Integral
+  const refundBtn = modal.querySelector('#btn-confirm-full-refund');
+  if (refundBtn) {
+    refundBtn.addEventListener('click', () => {
+      try {
+        const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+        const targetIndex = orders.findIndex(o => String(o.id) === String(orderId));
+        if (targetIndex !== -1) {
+          orders[targetIndex].status = 'Cancelado & Reembolsado (Art. 49)';
+          orders[targetIndex].statusColor = '#EF4444';
+          localStorage.setItem('estilobazar_orders', JSON.stringify(orders));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+
+      alert(`✅ Reembolso de R$ ${orderTotal.toFixed(2).replace('.', ',')} solicitado com sucesso! O estorno foi enviado para o seu PIX/Cartão conforme Art. 49 do CDC.`);
+      modal.remove();
+      if (refreshCallback) refreshCallback();
     });
   }
 }
