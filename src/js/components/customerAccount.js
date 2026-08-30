@@ -587,50 +587,52 @@ function openCancelRetentionModal(orderId, orderTotal, refreshCallback) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay active';
   modal.id = 'cancel-retention-modal';
-  modal.style.zIndex = '9999';
+  modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(44, 48, 46, 0.75); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 1rem;';
 
   modal.innerHTML = `
-    <div class="modal-card" style="max-width: 540px; padding: 2rem; border-radius: var(--radius-lg); text-align: center;">
-      <button class="modal-close" id="cancel-modal-close-btn">&times;</button>
+    <div class="modal-card" style="background: #FFFFFF !important; max-width: 560px; width: 100%; padding: 2.2rem; border-radius: 24px; text-align: center; box-shadow: 0 25px 60px rgba(0,0,0,0.4); border: 1px solid rgba(196, 230, 197, 0.9); position: relative; max-height: 90vh; overflow-y: auto;">
+      <button class="modal-close" id="cancel-modal-close-btn" style="position: absolute; top: 18px; right: 22px; font-size: 1.8rem; background: none; border: none; cursor: pointer; color: var(--c-text-muted);">&times;</button>
       
-      <div style="font-size: 2.8rem; margin-bottom: 0.5rem;">💌</div>
-      <span class="badge-curated" style="background: #FDF0F0; color: #E4A1A1; margin-bottom: 0.6rem;">Garantia &amp; Atendimento EstiloBazar</span>
+      <div style="font-size: 3rem; margin-bottom: 0.4rem;">💌</div>
+      <span class="badge-curated" style="background: #FDF0F0; color: #E4A1A1; font-weight: 700; font-size: 0.78rem; padding: 0.3rem 0.9rem; border-radius: 99px; display: inline-block; margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">
+        Garantia &amp; Atendimento EstiloBazar
+      </span>
       
-      <h3 style="font-family: var(--font-heading); font-size: 1.5rem; color: var(--c-text-main); margin-bottom: 0.4rem;">
+      <h3 style="font-family: var(--font-heading); font-size: 1.6rem; color: #2C302E; font-weight: 700; margin: 0 0 0.4rem 0;">
         Deseja cancelar o Pedido #${orderId}?
       </h3>
-      <p style="font-size: 0.88rem; color: var(--c-text-muted); margin-bottom: 1.5rem;">
-        Valor do Pedido: <strong>R$ ${orderTotal.toFixed(2).replace('.', ',')}</strong>. Escolha como prefere prosseguir:
+      <p style="font-size: 0.9rem; color: #5C6560; margin: 0 0 1.6rem 0;">
+        Valor do Pedido: <strong style="color: #2C302E; font-size: 1rem;">R$ ${orderTotal.toFixed(2).replace('.', ',')}</strong>. Escolha como prefere prosseguir:
       </p>
 
       <!-- Opção 1: Crédito na Loja (+10% Bônus) -->
-      <div style="background: linear-gradient(135deg, #F0F8F1 0%, #FFFFFF 100%); border: 2px solid #8EC490; border-radius: var(--radius-md); padding: 1.2rem; margin-bottom: 1.2rem; text-align: left; cursor: pointer; position: relative;" id="option-credit-bonus">
-        <span style="position: absolute; top: -10px; right: 15px; background: #8EC490; color: #FFF; font-size: 0.72rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 99px; text-transform: uppercase;">
-          Recomendado (+10% Bônus)
+      <div style="background: linear-gradient(135deg, #F0F8F1 0%, #FFFFFF 100%); border: 2px solid #8EC490; border-radius: 16px; padding: 1.4rem; margin-bottom: 1.2rem; text-align: left; position: relative; box-shadow: 0 4px 15px rgba(142, 196, 144, 0.15);" id="option-credit-bonus">
+        <span style="position: absolute; top: -12px; right: 16px; background: #8EC490; color: #FFFFFF; font-size: 0.72rem; font-weight: 800; padding: 0.25rem 0.75rem; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 2px 6px rgba(142, 196, 144, 0.4);">
+          ⭐ Recomendado (+10% Bônus)
         </span>
-        <div style="font-weight: 700; font-size: 1rem; color: #2C302E; margin-bottom: 0.3rem;">
+        <div style="font-weight: 700; font-size: 1.05rem; color: #2C302E; margin-bottom: 0.4rem;">
           🎁 Converter em Crédito na Loja (+10% de Bônus da Loja)
         </div>
-        <div style="font-size: 1.25rem; font-weight: 800; color: #2E7D32; margin-bottom: 0.4rem;">
+        <div style="font-size: 1.35rem; font-weight: 800; color: #2E7D32; margin-bottom: 0.4rem;">
           Você recebe: R$ ${creditTotal.toFixed(2).replace('.', ',')} em Saldo
         </div>
-        <p style="font-size: 0.8rem; color: var(--c-text-muted); margin: 0;">
+        <p style="font-size: 0.83rem; color: #5C6560; margin: 0 0 1rem 0; line-height: 1.4;">
           O saldo é adicionado na sua conta imediatamente para garimpar qualquer outra peça do acervo sem esperar prazos bancários.
         </p>
-        <button class="btn btn-primary" id="btn-accept-bonus-credit" style="width: 100%; margin-top: 1rem; font-size: 0.88rem;">
+        <button class="btn btn-primary" id="btn-accept-bonus-credit" style="width: 100%; padding: 0.85rem; font-size: 0.92rem; font-weight: 700; background: #8EC490; border: none; border-radius: 99px; color: #FFF; cursor: pointer; box-shadow: 0 4px 12px rgba(142, 196, 144, 0.35);">
           ✨ Quero Saldo com +10% Bônus (R$ ${creditTotal.toFixed(2).replace('.', ',')})
         </button>
       </div>
 
       <!-- Opção 2: Reembolso Integral (Art. 49 CDC) -->
-      <div style="border: 1px solid #E5E7EB; border-radius: var(--radius-md); padding: 1rem; text-align: left;" id="option-full-refund">
-        <div style="font-weight: 700; font-size: 0.92rem; color: var(--c-text-main); margin-bottom: 0.2rem;">
+      <div style="background: #FAF9F6; border: 1px solid #E5E7EB; border-radius: 16px; padding: 1.2rem; text-align: left;" id="option-full-refund">
+        <div style="font-weight: 700; font-size: 0.95rem; color: #2C302E; margin-bottom: 0.3rem;">
           💳 Reembolso Integral via PIX / Cartão (Art. 49 CDC)
         </div>
-        <p style="font-size: 0.78rem; color: var(--c-text-muted); margin-bottom: 0.8rem;">
+        <p style="font-size: 0.8rem; color: #5C6560; margin-bottom: 0.9rem; line-height: 1.4;">
           O valor de R$ ${orderTotal.toFixed(2).replace('.', ',')} será estornado integralmente na mesma forma de pagamento utilizada.
         </p>
-        <button class="btn btn-outline" id="btn-confirm-full-refund" style="width: 100%; font-size: 0.82rem; color: #DC2626; border-color: #FCA5A5;">
+        <button class="btn btn-outline" id="btn-confirm-full-refund" style="width: 100%; padding: 0.7rem; font-size: 0.85rem; font-weight: 700; color: #DC2626; border: 1.5px solid #FCA5A5; border-radius: 99px; background: #FFF; cursor: pointer;">
           ❌ Confirmar Reembolso Integral (R$ ${orderTotal.toFixed(2).replace('.', ',')})
         </button>
       </div>
