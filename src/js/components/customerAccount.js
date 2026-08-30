@@ -39,12 +39,42 @@ const sampleCustomerOrders = [
     total: 199.80,
     paymentMethod: 'PIX (5% OFF Aplicado)',
     trackingCode: 'BR849204918SP',
+    isPending: false,
+    isCancelled: false,
     items: [
       { title: 'Blusa Cetim Bege', brand: 'Baje', price: 50.00, size: '40', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80' },
       { title: 'Vestido Floral Vintage', brand: 'Eloíse', price: 149.80, size: 'P', image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80' }
     ]
   }
 ];
+
+function getAllCustomerOrders() {
+  const localOrders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+  const formattedLocal = localOrders.map(ord => {
+    const isCancelled = (ord.status || '').toLowerCase().includes('cancelado');
+    const isPending = !isCancelled && ((ord.status || '').toLowerCase().includes('pendente') || (ord.status || '').toLowerCase().includes('pix') || (ord.status || '').toLowerCase().includes('aguardando'));
+    
+    let statusColor = '#D97706';
+    if (isCancelled) statusColor = '#EF4444';
+    else if (isPending) statusColor = '#F59E0B';
+    else if ((ord.status || '').toLowerCase().includes('aprovado')) statusColor = '#10B981';
+
+    return {
+      id: ord.id,
+      date: ord.date || new Date().toLocaleDateString('pt-BR'),
+      status: ord.status || 'Pagamento Pendente',
+      statusColor: statusColor,
+      isPending: isPending,
+      isCancelled: isCancelled,
+      total: ord.total || 0,
+      paymentMethod: ord.paymentMethod === 'pix' ? 'PIX (5% OFF Aplicado)' : (ord.paymentMethod || 'Cartão de Crédito'),
+      trackingCode: ord.trackingCode || null,
+      items: ord.items || []
+    };
+  });
+
+  return [...formattedLocal, ...sampleCustomerOrders];
+}
 
 export function renderCustomerAccount() {
   const customer = getCustomerUser();
@@ -204,17 +234,18 @@ function renderAccountDashboard(customer) {
 
 function renderTabContent(customer) {
   const favorites = getFavorites();
+  const allOrders = getAllCustomerOrders();
 
   switch (activeAccountTab) {
     case 'pedidos':
       return `
         <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg);">
-          <h3 style="font-size: 1.2rem; font-family: var(--font-heading); margin-bottom: 1.2rem;">Histórico de Compras</h3>
+          <h3 style="font-size: 1.2rem; font-family: var(--font-heading); margin-bottom: 1.2rem;">Histórico de Compras (${allOrders.length})</h3>
 
-          ${sampleCustomerOrders.length === 0 ? `
+          ${allOrders.length === 0 ? `
             <p style="text-align: center; color: var(--c-text-muted); padding: 2rem;">Você ainda não possui pedidos realizados.</p>
-          ` : sampleCustomerOrders.map(order => `
-            <div style="border: 1px solid var(--c-mint); border-radius: var(--radius-md); padding: 1.2rem; margin-bottom: 1rem; background: var(--bg-base);">
+          ` : allOrders.map(order => `
+            <div style="border: 1px solid ${order.isPending ? '#F59E0B' : 'var(--c-mint)'}; border-radius: var(--radius-md); padding: 1.2rem; margin-bottom: 1.2rem; background: ${order.isPending ? '#FFFBEB' : 'var(--bg-base)'};">
               <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.8rem; border-bottom: 1px dashed var(--c-mint); padding-bottom: 0.6rem;">
                 <div>
                   <strong style="font-size: 1.05rem;">Pedido #${order.id}</strong>
@@ -225,14 +256,26 @@ function renderTabContent(customer) {
                 </span>
               </div>
 
+              ${order.isPending ? `
+                <!-- Alerta de Pagamento Pendente -->
+                <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                  <div style="font-size: 0.85rem; color: #92400E; font-weight: 600;">
+                    ⏳ Aguardando pagamento via PIX. Pague para garantir suas peças garimpadas!
+                  </div>
+                  <button class="btn btn-primary btn-pay-pix-action" data-id="${order.id}" data-total="${order.total}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; background: #D97706; border: none;">
+                    📲 Pagar Agora com PIX
+                  </button>
+                </div>
+              ` : ''}
+
               <div style="display: flex; gap: 1rem; flex-direction: column; margin-bottom: 1rem;">
                 ${order.items.map(item => `
                   <div style="display: flex; align-items: center; gap: 1rem;">
                     <img src="${item.image}" alt="${item.title}" style="width: 50px; height: 65px; object-fit: cover; border-radius: var(--radius-sm);" />
                     <div>
                       <div style="font-weight: 700; font-size: 0.92rem;">${item.title}</div>
-                      <div style="font-size: 0.8rem; color: var(--c-text-muted);">Marca: ${item.brand} • Tam: ${item.size}</div>
-                      <div style="font-size: 0.85rem; font-weight: 700; color: var(--c-text-main);">R$ ${item.price.toFixed(2).replace('.', ',')}</div>
+                      <div style="font-size: 0.8rem; color: var(--c-text-muted);">Marca: ${item.brand || 'Brechó'} • Tam: ${item.size || 'Único'}</div>
+                      <div style="font-size: 0.85rem; font-weight: 700; color: var(--c-text-main);">R$ ${(item.price || 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                   </div>
                 `).join('')}
@@ -243,10 +286,17 @@ function renderTabContent(customer) {
                   <span style="font-size: 0.82rem; color: var(--c-text-muted);">Pagamento: <strong>${order.paymentMethod}</strong></span>
                   ${order.trackingCode ? `<div style="font-size: 0.82rem; color: var(--c-text-muted); margin-top: 0.2rem;">Rastreio Correios: <strong style="color: var(--c-pink-dark);">${order.trackingCode}</strong></div>` : ''}
                 </div>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                  <span style="font-size: 1.1rem; font-weight: 700;">Total: R$ ${order.total.toFixed(2).replace('.', ',')}</span>
-                  <button class="btn btn-outline btn-track-order-action" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                    🚚 Rastrear Pedido
+                <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                  <span style="font-size: 1.1rem; font-weight: 700; margin-right: 0.5rem;">Total: R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+                  
+                  ${!order.isCancelled ? `
+                    <button class="btn btn-outline btn-cancel-order-action" data-id="${order.id}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; color: #DC2626; border-color: #FCA5A5;">
+                      ❌ Cancelar Compra
+                    </button>
+                  ` : ''}
+
+                  <button class="btn btn-outline btn-track-order-action" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                    🚚 Rastrear
                   </button>
                 </div>
               </div>
@@ -466,6 +516,46 @@ export function setupCustomerAccountListeners(onAuthSuccess) {
   document.querySelectorAll('.btn-track-order-action').forEach(btn => {
     btn.addEventListener('click', () => {
       openOrdersModal();
+    });
+  });
+
+  // Ação de Cancelamento de Pedido
+  document.querySelectorAll('.btn-cancel-order-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const orderId = btn.getAttribute('data-id');
+      const confirmCancel = confirm(`⚠️ Tem certeza que deseja cancelar a compra do Pedido #${orderId}?\n\nEsta ação liberará os itens garimpados de volta para a loja.`);
+      
+      if (confirmCancel) {
+        try {
+          const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+          const targetIndex = orders.findIndex(o => String(o.id) === String(orderId));
+          
+          if (targetIndex !== -1) {
+            orders[targetIndex].status = 'Cancelado';
+            orders[targetIndex].statusColor = '#EF4444';
+            localStorage.setItem('estilobazar_orders', JSON.stringify(orders));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+
+        alert(`✅ O Pedido #${orderId} foi cancelado com sucesso.`);
+        refreshView();
+      }
+    });
+  });
+
+  // Ação de Pagar PIX Pendente
+  document.querySelectorAll('.btn-pay-pix-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const orderId = btn.getAttribute('data-id');
+      const orderTotal = btn.getAttribute('data-total');
+      const pixKey = `00020126580014br.gov.bcb.pix0136estilobazar-${orderId}-pix5504000053039865802BR5920EstiloBazar%20Moda6009Sao%20Paulo62070503***6304C8A9`;
+      
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(pixKey).catch(() => {});
+      }
+      alert(`📲 Chave PIX do Pedido #${orderId} copiada com sucesso!\n\nValor: R$ ${Number(orderTotal || 0).toFixed(2).replace('.', ',')}\nCole no aplicativo do seu banco para concluir o pagamento.`);
     });
   });
 
