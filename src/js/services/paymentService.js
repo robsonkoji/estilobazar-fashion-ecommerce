@@ -1,8 +1,8 @@
 // Serviço de Pagamentos em Tempo Real para EstiloBazar
 // Suporta Mercado Pago API (PIX com 5% OFF e Cartão de Crédito Transparente em até 6x sem juros)
 
-// Credencial Sandbox padrão do Mercado Pago para desenvolvimento/testes
-const MP_SANDBOX_ACCESS_TOKEN = 'APP_USR-6834927501934812-082920-5f2849201948275918274-sandbox';
+// Credencial Oficial de Produção do Mercado Pago da loja EstiloBazar
+const MP_ACCESS_TOKEN = 'APP_USR-5130911010309026-091322-696ee03a1c20a8384a17a11bedabe3c2-3689326646';
 
 /**
  * Gera um pagamento PIX dinâmico com 5% de desconto
@@ -34,7 +34,7 @@ export async function createPixPayment(orderData) {
     const response = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${MP_SANDBOX_ACCESS_TOKEN}`,
+        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
         'Content-Type': 'application/json',
         'X-Idempotency-Key': `pix-${orderData.orderId}-${Date.now()}`
       },
@@ -114,7 +114,7 @@ export async function checkPaymentStatus(paymentId) {
     const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${MP_SANDBOX_ACCESS_TOKEN}`
+        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`
       }
     });
 
