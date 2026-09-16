@@ -214,27 +214,11 @@ export function openCheckoutModal() {
               Total: R$ ${orderTotal.toFixed(2).replace('.', ',')}
             </div>
 
-            <div style="background: white; padding: 1rem; border-radius: var(--radius-md); display: inline-block; border: 1px solid var(--c-mint); margin-bottom: 1rem;">
+            <div style="background: #FFFFFF; padding: 1.2rem; border-radius: var(--radius-md); display: inline-block; border: 2px solid var(--c-mint-dark); margin-bottom: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
               ${pixData && pixData.qrCodeBase64 ? `
-                <img src="data:image/jpeg;base64,${pixData.qrCodeBase64}" alt="QR Code PIX Banco Central" style="width: 170px; height: 170px; display: block; margin: 0 auto;">
+                <img src="data:image/jpeg;base64,${pixData.qrCodeBase64}" alt="QR Code PIX Banco Central" style="width: 200px; height: 200px; display: block; margin: 0 auto; border-radius: 8px;">
               ` : `
-                <!-- QR Code SVG Dinâmico do Banco Central -->
-                <svg width="150" height="150" viewBox="0 0 100 100" fill="none">
-                  <rect width="100" height="100" fill="#FFFFFF"/>
-                  <rect x="10" y="10" width="30" height="30" fill="#2C302E"/>
-                  <rect x="15" y="15" width="20" height="20" fill="#FFFFFF"/>
-                  <rect x="20" y="20" width="10" height="10" fill="#2C302E"/>
-                  <rect x="60" y="10" width="30" height="30" fill="#2C302E"/>
-                  <rect x="65" y="15" width="20" height="20" fill="#FFFFFF"/>
-                  <rect x="70" y="20" width="10" height="10" fill="#2C302E"/>
-                  <rect x="10" y="60" width="30" height="30" fill="#2C302E"/>
-                  <rect x="15" y="65" width="20" height="20" fill="#FFFFFF"/>
-                  <rect x="20" y="70" width="10" height="10" fill="#2C302E"/>
-                  <rect x="50" y="50" width="15" height="15" fill="#2C302E"/>
-                  <rect x="70" y="50" width="20" height="10" fill="#2C302E"/>
-                  <rect x="50" y="75" width="25" height="15" fill="#2C302E"/>
-                  <rect x="80" y="70" width="10" height="20" fill="#2C302E"/>
-                </svg>
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(pixCopyKey)}" alt="QR Code PIX Escaneável Banco Central" style="width: 200px; height: 200px; display: block; margin: 0 auto; border-radius: 8px;">
               `}
             </div>
 
