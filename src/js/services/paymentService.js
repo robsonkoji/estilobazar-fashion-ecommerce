@@ -13,7 +13,25 @@ export async function createPixPayment(orderData) {
   const pixDiscount = orderData.subtotal * 0.05;
   const finalAmount = orderData.subtotal - pixDiscount + (orderData.shippingCost || 0);
 
-  // Payload oficial do Mercado Pago para PIX
+  // 1. Tenta chamar a rota serverless /api/create-pix (que evita bloqueios de CORS do navegador)
+  try {
+    const apiResponse = await fetch('/api/create-pix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData)
+    });
+
+    if (apiResponse.ok) {
+      const data = await apiResponse.json();
+      if (data.success) {
+        return data;
+      }
+    }
+  } catch (apiErr) {
+    console.warn('⚠️ Tentando chamada direta ao gateway...', apiErr.message);
+  }
+
+  // 2. Chamada direta ao Mercado Pago API
   const payload = {
     transaction_amount: Number(finalAmount.toFixed(2)),
     description: `EstiloBazar - Pedido #${orderData.orderId}`,
