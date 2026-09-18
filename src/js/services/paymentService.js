@@ -151,10 +151,47 @@ export async function checkPaymentStatus(paymentId) {
 }
 
 /**
- * Gera um payload PIX com QR Code SVG bonito se o gateway estiver offline em testes locais
+ * Gera uma string oficial de PIX BR Code (Banco Central) com CRC16 válido
+ * usando a chave cadastrada do Mercado Pago da loja: f17f465a-c41b-4653-8a4a-75d7bbb6a53c
  */
+export function generateOfficialPixBRCode(key, name, city, amount, txid = '***') {
+  function crc16(str) {
+    let crc = 0xFFFF;
+    for (let i = 0; i < str.length; i++) {
+      crc ^= str.charCodeAt(i) << 8;
+      for (let j = 0; j < 8; j++) {
+        if ((crc & 0x8000) !== 0) {
+          crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+        } else {
+          crc = (crc << 1) & 0xFFFF;
+        }
+      }
+    }
+    return crc.toString(16).toUpperCase().padStart(4, '0');
+  }
+
+  const cleanTxId = (txid || '***').replace(/[^a-zA-Z0-9]/g, '').slice(0, 25) || 'EB1001';
+  const amtStr = Number(amount).toFixed(2);
+  const amtLen = String(amtStr.length).padStart(2, '0');
+  
+  let p = '000201';
+  p += '26' + String(14 + 4 + key.length).padStart(2, '0') + '0014br.gov.bcb.pix' + '01' + String(key.length).padStart(2, '0') + key;
+  p += '52040000';
+  p += '5303986';
+  p += '54' + amtLen + amtStr;
+  p += '5802BR';
+  p += '59' + String(name.length).padStart(2, '0') + name;
+  p += '60' + String(city.length).padStart(2, '0') + city;
+  p += '62' + String(4 + cleanTxId.length).padStart(2, '0') + '05' + String(cleanTxId.length).padStart(2, '0') + cleanTxId;
+  p += '6304';
+  
+  return p + crc16(p);
+}
+
 function generateFallbackPix(orderData, finalAmount) {
-  const pixKey = `00020126580014br.gov.bcb.pix0136estilobazar-${orderData.orderId}-pix5504000053039865802BR5920EstiloBazar%20Moda6009Sao%20Paulo62070503***6304C8A9`;
+  const registeredKey = 'f17f465a-c41b-4653-8a4a-75d7bbb6a53c';
+  const pixKey = generateOfficialPixBRCode(registeredKey, 'EstiloBazar', 'Sao Paulo', finalAmount, orderData.orderId);
+  
   return {
     success: true,
     paymentId: 'pix_local_' + orderData.orderId,
