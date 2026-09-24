@@ -267,7 +267,7 @@ export function setupAdminPanelListeners(onLogoutSuccess) {
 }
 
 async function loadAdminProducts() {
-  adminProducts = await getProductsFromFirestore();
+  adminProducts = await getProductsFromFirestore(true);
   updateStats();
   renderTableRows(adminProducts);
 }

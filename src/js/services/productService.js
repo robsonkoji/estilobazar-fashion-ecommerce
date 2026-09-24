@@ -32,18 +32,25 @@ export async function getProductsFromFirestore(forceRefresh = false) {
       products.push({ id: docSnap.id, ...docSnap.data() });
     });
 
+    // Se houver dados reais cadastrados no Firestore, eles são a fonte absoluta de verdade
+    if (products.length > 0) {
+      cachedProducts = products;
+      return products;
+    }
+
+    // Se o Firestore estiver totalmente vazio
     const hasBeenSeeded = localStorage.getItem('estilobazar_firestore_seeded') === 'true';
-    if (products.length === 0 && !hasBeenSeeded) {
-      console.log('📦 Firestore sem dados iniciais. Usando catálogo modelo...');
+    if (!hasBeenSeeded) {
+      console.log('📦 Firestore sem dados. Carregando catálogo modelo...');
       cachedProducts = localFallbackProducts.map(p => ({ ...p }));
       return cachedProducts;
     }
 
-    cachedProducts = products;
-    return products;
+    cachedProducts = [];
+    return [];
   } catch (error) {
     console.warn('⚠️ Erro ao consultar Firestore. Usando fallback local:', error.message);
-    if (cachedProducts) return cachedProducts;
+    if (cachedProducts && cachedProducts.length > 0) return cachedProducts;
     return localFallbackProducts.map(p => ({ ...p }));
   }
 }
