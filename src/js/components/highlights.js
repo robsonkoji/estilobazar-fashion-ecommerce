@@ -35,9 +35,6 @@ function renderProductCard(product) {
 }
 
 export function renderHighlightsSection() {
-  const featured = fallbackProducts.filter(p => p.isFeatured);
-  const newArrivals = fallbackProducts.filter(p => p.isNew);
-
   return `
     <section class="highlights-section" id="destaques">
       <div class="container">
@@ -60,7 +57,7 @@ export function renderHighlightsSection() {
 
         <div class="highlights-carousel-wrap">
           <div class="highlights-carousel" id="highlights-carousel">
-            ${featured.map(p => renderProductCard(p)).join('')}
+            <div style="text-align: center; width: 100%; padding: 2rem; color: var(--c-text-muted);">Carregando acervo do Firebase...</div>
           </div>
         </div>
 
@@ -73,7 +70,7 @@ export function renderHighlightsSection() {
         </div>
 
         <div class="new-arrivals-grid" id="new-arrivals-grid">
-          ${newArrivals.map(p => renderProductCard(p)).join('')}
+          <div style="text-align: center; grid-column: 1 / -1; padding: 2rem; color: var(--c-text-muted);">Carregando novidades do Firebase...</div>
         </div>
 
       </div>
