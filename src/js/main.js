@@ -55,9 +55,10 @@ function renderBreadcrumb(pathText) {
 function renderPageView(route) {
   // Rota de administração sempre funcional
   if (route === 'admin') {
+    const isLogged = isAuthenticated() || sessionStorage.getItem('estilobazar_admin_session') === 'true' || isPreviewActive();
     return `
       ${renderBreadcrumb('Painel de Administração')}
-      ${isAuthenticated() ? renderAdminPanel() : renderAdminLogin()}
+      ${isLogged ? renderAdminPanel() : renderAdminLogin()}
     `;
   }
 
