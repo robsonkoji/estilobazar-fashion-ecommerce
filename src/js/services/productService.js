@@ -147,29 +147,67 @@ export async function uploadProductImage(file) {
   }
 }
 
-// Semeia o banco com o acervo inicial usando IDs determinísticos (prod-1, prod-2, etc.)
+// Semeia o banco com o acervo inicial
 export async function seedProductsToFirestore(force = false) {
+  const sampleSeedItems = [
+    {
+      id: "prod-101",
+      title: "Vestido Midi Romântico Floral",
+      category: "Vestidos",
+      price: 159.90,
+      originalPrice: 340.00,
+      size: "M",
+      condition: "Como Novo",
+      brand: "Farm",
+      image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80",
+      badge: "Brechó Curado",
+      isFeatured: true,
+      isNew: true,
+      isBargain: false
+    },
+    {
+      id: "prod-102",
+      title: "Jaqueta Jeans Estonada Retro",
+      category: "Jaquetas",
+      price: 189.00,
+      originalPrice: 450.00,
+      size: "M",
+      condition: "Como Nova",
+      brand: "Levi's",
+      image: "https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=800&q=80",
+      badge: "Brechó Curado",
+      isFeatured: true,
+      isNew: true,
+      isBargain: false
+    },
+    {
+      id: "prod-103",
+      title: "Blazer Linho Curado Fendi",
+      category: "Jaquetas",
+      price: 245.00,
+      originalPrice: 650.00,
+      size: "M",
+      condition: "Vintage Raro",
+      brand: "Zara",
+      image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=800&q=80",
+      badge: "Brechó Curado",
+      isFeatured: true,
+      isNew: true,
+      isBargain: false
+    }
+  ];
+
   try {
     const productsRef = collection(db, COLLECTION_NAME);
-    const snapshot = await getDocs(productsRef);
-
-    if (!snapshot.empty && !force) {
-      const confirmForce = confirm('O banco de dados já possui produtos. Deseja adicionar o lote de modelos novamente?');
-      if (!confirmForce) {
-        return { success: false, message: 'Operação cancelada.' };
-      }
-    }
-
     let count = 0;
     const seededList = [];
 
-    for (const p of localFallbackProducts) {
+    for (const p of sampleSeedItems) {
       const { id, ...pData } = p;
       const productDoc = {
         ...pData,
         createdAt: new Date().toISOString()
       };
-      // Grava com o ID explícito (prod-1, prod-2...)
       await setDoc(doc(db, COLLECTION_NAME, id), productDoc);
       seededList.push({ id, ...productDoc });
       count++;
@@ -179,7 +217,13 @@ export async function seedProductsToFirestore(force = false) {
     cachedProducts = seededList;
     return { success: true, count };
   } catch (error) {
-    console.error('Erro ao semear banco:', error);
+    console.warn('⚠️ Erro ao semear banco Firebase:', error.message);
+    if (error.message.includes('permissions') || error.code === 'permission-denied') {
+      return { 
+        success: false, 
+        error: 'As regras de permissão no Firebase Console (Firestore Rules) precisam estar configuradas como "allow read, write: if true;".' 
+      };
+    }
     return { success: false, error: error.message };
   }
 }
