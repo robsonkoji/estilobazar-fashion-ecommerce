@@ -52,13 +52,16 @@ function renderBreadcrumb(pathText) {
   `;
 }
 
+function isAdminLogged() {
+  return isAuthenticated() || sessionStorage.getItem('estilobazar_admin_session') === 'true' || isPreviewActive();
+}
+
 function renderPageView(route) {
   // Rota de administração sempre funcional
   if (route === 'admin') {
-    const isLogged = isAuthenticated() || sessionStorage.getItem('estilobazar_admin_session') === 'true' || isPreviewActive();
     return `
       ${renderBreadcrumb('Painel de Administração')}
-      ${isLogged ? renderAdminPanel() : renderAdminLogin()}
+      ${isAdminLogged() ? renderAdminPanel() : renderAdminLogin()}
     `;
   }
 
@@ -208,7 +211,7 @@ function initApp() {
 
     // Listeners Específicos por Rota
     if (route === 'admin') {
-      if (isAuthenticated()) {
+      if (isAdminLogged()) {
         setupAdminPanelListeners(() => navigateTo('admin'));
       } else {
         setupAdminLoginListeners(() => navigateTo('admin'));
@@ -246,7 +249,7 @@ function initApp() {
       const mainView = document.getElementById('main-content-view');
       if (mainView) {
         mainView.innerHTML = renderPageView('admin');
-        if (isAuthenticated()) {
+        if (isAdminLogged()) {
           setupAdminPanelListeners(() => navigateTo('admin'));
         } else {
           setupAdminLoginListeners(() => navigateTo('admin'));

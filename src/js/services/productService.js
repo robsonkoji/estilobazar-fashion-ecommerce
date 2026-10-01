@@ -22,7 +22,7 @@ export async function getProductsFromFirestore(forceRefresh = false) {
     return cachedProducts;
   }
 
-  try {
+  const fetchPromise = (async () => {
     const productsRef = collection(db, COLLECTION_NAME);
     const q = query(productsRef);
     const snapshot = await getDocs(q);
@@ -32,13 +32,11 @@ export async function getProductsFromFirestore(forceRefresh = false) {
       products.push({ id: docSnap.id, ...docSnap.data() });
     });
 
-    // Se houver dados reais cadastrados no Firestore, eles são a fonte absoluta de verdade
     if (products.length > 0) {
       cachedProducts = products;
       return products;
     }
 
-    // Se o Firestore estiver totalmente vazio
     const hasBeenSeeded = localStorage.getItem('estilobazar_firestore_seeded') === 'true';
     if (!hasBeenSeeded) {
       console.log('📦 Firestore sem dados. Carregando catálogo modelo...');
@@ -48,8 +46,16 @@ export async function getProductsFromFirestore(forceRefresh = false) {
 
     cachedProducts = [];
     return [];
+  })();
+
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Tempo limite de resposta do Firestore (4s).')), 4000);
+  });
+
+  try {
+    return await Promise.race([fetchPromise, timeoutPromise]);
   } catch (error) {
-    console.warn('⚠️ Erro ao consultar Firestore. Usando fallback local:', error.message);
+    console.warn('⚠️ Erro ou Timeout ao consultar Firestore. Usando fallback local:', error.message);
     if (cachedProducts && cachedProducts.length > 0) return cachedProducts;
     return localFallbackProducts.map(p => ({ ...p }));
   }
