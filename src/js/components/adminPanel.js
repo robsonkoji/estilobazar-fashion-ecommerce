@@ -9,6 +9,7 @@ import {
 import { logoutAdmin, getCurrentUser } from '../utils/auth.js';
 import { categories, sizes, conditions, brands } from '../data/products.js';
 import { compressImage } from '../utils/imageCompressor.js';
+import { sendTrackingEmail } from '../services/emailService.js';
 
 let adminProducts = [];
 let editingProductId = null;
@@ -46,35 +47,35 @@ export function renderAdminPanel() {
         </div>
       </div>
 
-      <!-- Dashboard Cards -->
+      <!-- Dashboard Cards (Controle de Estoque & Caixa) -->
       <div class="admin-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.2rem; margin-bottom: 2rem;">
         <div class="glass-panel" style="padding: 1.2rem; text-align: center;">
           <div style="font-size: 2rem; margin-bottom: 0.2rem;">👗</div>
           <div style="font-size: 1.8rem; font-weight: 700; color: var(--c-text-main);" id="stat-total-count">0</div>
-          <div style="font-size: 0.82rem; color: var(--c-text-muted);">Total de Peças Cadastradas</div>
+          <div style="font-size: 0.82rem; color: var(--c-text-muted);">Peças no Acervo Loja</div>
         </div>
 
         <div class="glass-panel" style="padding: 1.2rem; text-align: center;">
-          <div style="font-size: 2rem; margin-bottom: 0.2rem;">🏷️</div>
-          <div style="font-size: 1.8rem; font-weight: 700; color: var(--c-text-main);" id="stat-featured-count">0</div>
-          <div style="font-size: 0.82rem; color: var(--c-text-muted);">Peças em Destaque</div>
+          <div style="font-size: 2rem; margin-bottom: 0.2rem;">💰</div>
+          <div style="font-size: 1.8rem; font-weight: 700; color: #15803D;" id="stat-revenue-count">R$ 0,00</div>
+          <div style="font-size: 0.82rem; color: var(--c-text-muted);">Faturamento Total Vendas</div>
+        </div>
+
+        <div class="glass-panel" style="padding: 1.2rem; text-align: center;">
+          <div style="font-size: 2rem; margin-bottom: 0.2rem;">✨</div>
+          <div style="font-size: 1.8rem; font-weight: 700; color: #0284C7;" id="stat-pix-count">R$ 0,00</div>
+          <div style="font-size: 0.82rem; color: var(--c-text-muted);">Entradas via PIX (5% OFF)</div>
         </div>
 
         <div class="glass-panel" style="padding: 1.2rem; text-align: center;">
           <div style="font-size: 2rem; margin-bottom: 0.2rem;">💎</div>
-          <div style="font-size: 1.8rem; font-weight: 700; color: var(--c-text-main);" id="stat-avg-price">R$ 0,00</div>
-          <div style="font-size: 0.82rem; color: var(--c-text-muted);">Preço Médio do Acervo</div>
-        </div>
-
-        <div class="glass-panel" style="padding: 1.2rem; text-align: center;">
-          <div style="font-size: 2rem; margin-bottom: 0.2rem;">🔥</div>
-          <div style="font-size: 1.8rem; font-weight: 700; color: var(--c-text-main);" id="stat-bargain-count">0</div>
-          <div style="font-size: 0.82rem; color: var(--c-text-muted);">Achados &lt; R$99</div>
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--c-text-main);" id="stat-stock-value">R$ 0,00</div>
+          <div style="font-size: 0.82rem; color: var(--c-text-muted);">Valor Total do Estoque</div>
         </div>
       </div>
 
       <!-- Tabela de Produtos -->
-      <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg);">
+      <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.2rem;">
           <h3 style="font-size: 1.3rem; font-family: var(--font-heading);">Catálogo Atual</h3>
           <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
@@ -106,6 +107,38 @@ export function renderAdminPanel() {
               <tr>
                 <td colspan="8" style="text-align: center; padding: 2rem; color: var(--c-text-muted);">
                   Carregando catálogo do Firestore...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabela de Pedidos & Controle Antifraude de Cancelamentos -->
+      <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.2rem;">
+          <div>
+            <h3 style="font-size: 1.3rem; font-family: var(--font-heading); margin: 0;">Gestão de Pedidos, Envio & Cancelamentos</h3>
+            <p style="font-size: 0.82rem; color: var(--c-text-muted); margin-top: 0.2rem;">Acompanhamento de postagens Correios e auditoria de trocas/devoluções.</p>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--c-mint); color: var(--c-text-muted);">
+                <th style="padding: 0.8rem;">ID Pedido</th>
+                <th style="padding: 0.8rem;">Data</th>
+                <th style="padding: 0.8rem;">Pagamento</th>
+                <th style="padding: 0.8rem;">Total</th>
+                <th style="padding: 0.8rem;">Status Atual</th>
+                <th style="padding: 0.8rem; text-align: right;">Ações de Controle</th>
+              </tr>
+            </thead>
+            <tbody id="admin-orders-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem; color: var(--c-text-muted);">
+                  Carregando pedidos registrados...
                 </td>
               </tr>
             </tbody>
@@ -161,6 +194,11 @@ export function renderAdminPanel() {
               <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem;">Condição / Estado *</label>
               <input type="text" id="p-condition" class="search-input" style="width: 100%;" required placeholder="Como Nova, Vintage Raro" />
             </div>
+
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem;">Estoque (Qtd. Peças) *</label>
+              <input type="number" id="p-stock" class="search-input" style="width: 100%;" required min="1" value="1" placeholder="1" />
+            </div>
           </div>
 
           <!-- Upload de Galeria de Fotos (Multi-fotos) -->
@@ -207,6 +245,7 @@ export function renderAdminPanel() {
 
 export function setupAdminPanelListeners(onLogoutSuccess) {
   loadAdminProducts();
+  loadAdminOrders();
 
   const previewBtn = document.getElementById('admin-preview-site-btn');
   if (previewBtn) {
@@ -272,21 +311,124 @@ async function loadAdminProducts() {
   renderTableRows(adminProducts);
 }
 
+function loadAdminOrders() {
+  const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+  renderAdminOrderRows(orders);
+}
+
+function renderAdminOrderRows(orders) {
+  const tbody = document.getElementById('admin-orders-table-body');
+  if (!tbody) return;
+
+  if (orders.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; padding: 2rem; color: var(--c-text-muted);">
+          Nenhum pedido registrado no sistema no momento.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = orders.map(ord => `
+    <tr style="border-bottom: 1px solid rgba(196, 230, 197, 0.4);">
+      <td style="padding: 0.8rem; font-weight: 700; color: var(--c-pink-dark);">#${ord.id}</td>
+      <td style="padding: 0.8rem; color: var(--c-text-muted);">${ord.date || 'Hoje'}</td>
+      <td style="padding: 0.8rem;">${ord.paymentMethod === 'pix' ? '✨ PIX (5% OFF)' : (ord.paymentMethod || 'Cartão')}</td>
+      <td style="padding: 0.8rem; font-weight: 700;">R$ ${(ord.total || 0).toFixed(2).replace('.', ',')}</td>
+      <td style="padding: 0.8rem;">
+        <span class="security-badge" style="font-size: 0.78rem;">${ord.status || 'Pendente'}</span>
+      </td>
+      <td style="padding: 0.8rem; text-align: right;">
+        ${!ord.trackingCode ? `
+          <button class="btn btn-outline btn-admin-dispatch" data-id="${ord.id}" style="padding: 0.25rem 0.6rem; font-size: 0.78rem; color: #2563EB; border-color: #93C5FD;">
+            🚚 Inserir Rastreio
+          </button>
+        ` : `
+          <div style="display: inline-flex; align-items: center; gap: 0.4rem;">
+            <span style="font-size: 0.75rem; color: #059669; font-weight: 600;">📦 ${ord.trackingCode}</span>
+            <a href="https://wa.me/${(ord.customerPhone || '5511999998888').replace(/\D/g, '')}?text=${encodeURIComponent(`Olá ${ord.customerName || 'Cliente'}! ✨ Seu pedido #${ord.id} no EstiloBazar foi postado nos Correios!\n\nCódigo de Rastreio: ${ord.trackingCode}\nAcompanhe a entrega aqui: https://rastreamento.correios.com.br/app/index.php?codigo=${ord.trackingCode}`)}" target="_blank" class="btn btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.72rem; border-color: #25D366; color: #16A34A; text-decoration: none;" title="Notificar cliente via WhatsApp">
+              💬 WhatsApp
+            </a>
+          </div>
+        `}
+        ${(ord.status || '').includes('Solicitada') || (ord.status || '').includes('Reembolso') ? `
+          <button class="btn btn-outline btn-admin-approve-refund" data-id="${ord.id}" style="padding: 0.25rem 0.6rem; font-size: 0.78rem; color: #D97706; border-color: #FCD34D;">
+            ✅ Aprovar Troca/Estorno
+          </button>
+        ` : ''}
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('.btn-admin-dispatch').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const orderId = btn.getAttribute('data-id');
+      const code = prompt(`Digite o código de rastreamento dos Correios para o Pedido #${orderId}:`, 'AA123456789BR');
+      if (code && code.trim()) {
+        const cleanCode = code.trim().toUpperCase();
+        let targetOrder = null;
+        try {
+          const currentOrders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+          const idx = currentOrders.findIndex(o => String(o.id) === String(orderId));
+          if (idx !== -1) {
+            currentOrders[idx].trackingCode = cleanCode;
+            currentOrders[idx].step = 3;
+            currentOrders[idx].status = `Enviado nos Correios (Rastreio: ${cleanCode})`;
+            localStorage.setItem('estilobazar_orders', JSON.stringify(currentOrders));
+            targetOrder = currentOrders[idx];
+          }
+        } catch (e) { console.error(e); }
+
+        if (targetOrder) {
+          sendTrackingEmail(targetOrder, cleanCode).catch(() => {});
+        }
+
+        alert(`✅ Pedido #${orderId} atualizado para ENVIADO!\n\n• Código de Rastreio: ${cleanCode}\n• E-mail automático enviado para o cliente!\n• Você também pode clicar no botão 💬 WhatsApp para mandar mensagem direta.`);
+        loadAdminOrders();
+      }
+    });
+  });
+
+  tbody.querySelectorAll('.btn-admin-approve-refund').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const orderId = btn.getAttribute('data-id');
+      if (confirm(`Aprovar formalmente o estorno/devolução do Pedido #${orderId}?`)) {
+        try {
+          const currentOrders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+          const idx = currentOrders.findIndex(o => String(o.id) === String(orderId));
+          if (idx !== -1) {
+            currentOrders[idx].status = 'Devolução Aprovada & Estorno Concluído';
+            currentOrders[idx].statusColor = '#10B981';
+            localStorage.setItem('estilobazar_orders', JSON.stringify(currentOrders));
+          }
+        } catch (e) { console.error(e); }
+        alert(`✅ Devolução do Pedido #${orderId} aprovada e concluída com sucesso!`);
+        loadAdminOrders();
+      }
+    });
+  });
+}
+
 function updateStats() {
   const total = adminProducts.length;
-  const featured = adminProducts.filter(p => p.isFeatured).length;
-  const bargain = adminProducts.filter(p => p.price <= 99).length;
-  const avg = total > 0 ? adminProducts.reduce((acc, p) => acc + p.price, 0) / total : 0;
+  const stockTotalValue = adminProducts.reduce((acc, p) => acc + (p.price || 0), 0);
+
+  const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+  const validOrders = orders.filter(o => !(o.status || '').toLowerCase().includes('cancelado'));
+  const totalRevenue = validOrders.reduce((acc, o) => acc + (o.total || 0), 0);
+  const pixRevenue = validOrders.filter(o => o.paymentMethod === 'pix').reduce((acc, o) => acc + (o.total || 0), 0);
 
   const totalEl = document.getElementById('stat-total-count');
-  const featEl = document.getElementById('stat-featured-count');
-  const avgEl = document.getElementById('stat-avg-price');
-  const bargEl = document.getElementById('stat-bargain-count');
+  const revEl = document.getElementById('stat-revenue-count');
+  const pixEl = document.getElementById('stat-pix-count');
+  const stockEl = document.getElementById('stat-stock-value');
 
   if (totalEl) totalEl.textContent = total;
-  if (featEl) featEl.textContent = featured;
-  if (avgEl) avgEl.textContent = `R$ ${avg.toFixed(2).replace('.', ',')}`;
-  if (bargEl) bargEl.textContent = bargain;
+  if (revEl) revEl.textContent = `R$ ${totalRevenue.toFixed(2).replace('.', ',')}`;
+  if (pixEl) pixEl.textContent = `R$ ${pixRevenue.toFixed(2).replace('.', ',')}`;
+  if (stockEl) stockEl.textContent = `R$ ${stockTotalValue.toFixed(2).replace('.', ',')}`;
 }
 
 function renderTableRows(products) {
@@ -428,6 +570,9 @@ function openProductModalForm(product) {
 
   const elCond = document.getElementById('p-condition');
   if (elCond) elCond.value = product ? product.condition || 'Como Nova' : 'Como Nova';
+
+  const elStock = document.getElementById('p-stock');
+  if (elStock) elStock.value = (product && typeof product.stock === 'number') ? product.stock : 1;
 
   const elDesc = document.getElementById('p-description');
   if (elDesc) elDesc.value = product ? product.description || '' : '';
@@ -595,6 +740,7 @@ function setupModalFormListeners() {
         originalPrice: parseFloat(document.getElementById('p-original-price').value) || 0,
         size: document.getElementById('p-size').value.trim(),
         condition: document.getElementById('p-condition').value.trim(),
+        stock: parseInt(document.getElementById('p-stock').value, 10) || 1,
         image: mainCover,
         images: galleryList,
         gallery: galleryList,

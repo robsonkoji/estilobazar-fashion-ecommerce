@@ -14,9 +14,12 @@ export function openOrdersModal() {
     <div class="modal-container" style="max-width: 720px;">
       <button class="modal-close" id="orders-close-btn">&times;</button>
       
-      <div style="text-align: center; margin-bottom: 1.8rem;">
+      <div style="text-align: center; margin-bottom: 1.5rem;">
         <span class="badge-curated" style="margin-bottom: 0.4rem;">Minhas Compras</span>
-        <h2 class="title-section" style="font-size: 1.8rem;">Rastreamento de Pedidos</h2>
+        <h2 class="title-section" style="font-size: 1.8rem; margin-bottom: 0.8rem;">Rastreamento de Pedidos</h2>
+        <div style="max-width: 420px; margin: 0 auto; display: flex; gap: 0.5rem;">
+          <input type="text" id="orders-search-input" class="search-input" placeholder="Digite o nº do seu pedido (ex: #EB-2902)..." style="flex: 1; font-size: 0.85rem;" />
+        </div>
       </div>
 
       ${orders.length === 0 ? `

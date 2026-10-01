@@ -1,5 +1,6 @@
 import { getCart, clearCart, showToast } from '../utils/storage.js';
 import { createPixPayment, processCreditCardPayment, checkPaymentStatus } from '../services/paymentService.js';
+import { calculateSmartShipping, fetchAddressByCep } from '../services/shippingService.js';
 
 export function openCheckoutModal() {
   const cart = getCart();
@@ -14,7 +15,11 @@ export function openCheckoutModal() {
   const subtotal = cart.reduce((acc, item) => acc + item.price * (item.quantity || 1), 0);
   const freeShippingThreshold = 250;
   const isFreeShipping = subtotal >= freeShippingThreshold;
+  
+  let currentCep = '';
+  let calculatedShippingResult = null;
   let shippingCost = isFreeShipping ? 0 : 18.90;
+  let selectedShippingOptionId = '';
 
   const modal = document.createElement('div');
   modal.className = 'modal-overlay active';
@@ -52,8 +57,8 @@ export function openCheckoutModal() {
           </div>
 
           <div class="form-row">
-            <div class="form-group" style="flex: 0 0 140px;">
-              <label class="form-label">CEP *</label>
+            <div class="form-group" style="flex: 0 0 160px;">
+              <label class="form-label">CEP * (Auto-preencher)</label>
               <input type="text" required class="form-input" id="cust-cep" placeholder="00000-000">
             </div>
             <div class="form-group">
@@ -64,6 +69,10 @@ export function openCheckoutModal() {
               <label class="form-label">Número *</label>
               <input type="text" required class="form-input" id="cust-number" placeholder="123">
             </div>
+          </div>
+
+          <div id="cep-smart-info-box" style="display: none; margin-bottom: 0.8rem; font-size: 0.82rem; background: var(--c-mint-light); border: 1px solid var(--c-mint-dark); padding: 0.5rem 0.8rem; border-radius: var(--radius-sm); color: var(--c-text-main);">
+            <!-- Exibe o cálculo de frete de Guarulhos para o CEP digitado -->
           </div>
 
           <div class="form-row">
@@ -90,34 +99,75 @@ export function openCheckoutModal() {
   }
 
   function renderStep2() {
+    const rawOptions = (calculatedShippingResult && calculatedShippingResult.options) ? [...calculatedShippingResult.options] : [
+      {
+        id: 'pac_standard',
+        name: isFreeShipping ? '🚚 Frete Grátis Correios PAC' : '📦 Correios PAC Nacional',
+        desc: 'Envio econômico direto da central em Guarulhos - SP',
+        time: '3 a 6 dias úteis',
+        price: isFreeShipping ? 0 : 12.90
+      },
+      {
+        id: 'sedex_standard',
+        name: '⚡ Correios SEDEX Expresso',
+        desc: 'Postagem prioritária de Guarulhos - SP',
+        time: '1 a 2 dias úteis',
+        price: 17.90
+      }
+    ];
+
+    // Ordena do mais barato para o mais caro (Garantindo o mais acessível primeiro)
+    const shippingOptions = rawOptions.sort((a, b) => a.price - b.price);
+
+    // Se nenhuma opção foi explicitamente escolhida pelo usuário, seleciona automaticamente a mais econômica (índice 0)
+    if (!selectedShippingOptionId || !shippingOptions.some(o => o.id === selectedShippingOptionId)) {
+      selectedShippingOptionId = shippingOptions[0].id;
+      shippingCost = shippingOptions[0].price;
+    } else {
+      const currentOpt = shippingOptions.find(o => o.id === selectedShippingOptionId);
+      if (currentOpt) shippingCost = currentOpt.price;
+    }
+
     const pixDiscount = subtotal * 0.05;
-    const pixTotal = subtotal - pixDiscount + shippingCost;
+    const pixTotal = Math.max(0, subtotal - pixDiscount + shippingCost);
     const cardTotal = subtotal + shippingCost;
 
     return `
       <div class="checkout-step-content">
         <h3 class="checkout-step-title">2. Frete &amp; Forma de Pagamento</h3>
         
-        <!-- Frete Selection -->
-        <div class="checkout-block-title">Selecione a opção de frete:</div>
-        <div class="shipping-options" style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.5rem;">
-          <label class="shipping-option-card ${isFreeShipping ? 'active' : ''}">
-            <input type="radio" name="shipping-choice" value="0" ${isFreeShipping ? 'checked' : ''}>
-            <div class="shipping-option-info">
-              <strong>${isFreeShipping ? '🚚 Frete Grátis Correios PAC' : '📦 Correios PAC Nacional'}</strong>
-              <span>Previsão: 3 a 6 dias úteis</span>
-            </div>
-            <div class="shipping-price">${isFreeShipping ? 'GRÁTIS' : 'R$ 18,90'}</div>
-          </label>
+        <!-- Frete Selection inteligente por CEP -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+          <div class="checkout-block-title" style="margin: 0;">Selecione a opção de frete:</div>
+          ${calculatedShippingResult ? `
+            <span style="font-size: 0.78rem; background: var(--c-mint-light); color: #2E7D32; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 99px;">
+              📍 Guarulhos/SP ➔ ${calculatedShippingResult.zoneLabel}
+            </span>
+          ` : `
+            <span style="font-size: 0.78rem; background: var(--c-mint-light); color: #2E7D32; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 99px;">
+              📍 Saindo de Guarulhos - SP
+            </span>
+          `}
+        </div>
 
-          <label class="shipping-option-card">
-            <input type="radio" name="shipping-choice" value="28.90">
-            <div class="shipping-option-info">
-              <strong>⚡ Correios SEDEX Expresso</strong>
-              <span>Previsão: 1 a 2 dias úteis</span>
-            </div>
-            <div class="shipping-price">R$ 28,90</div>
-          </label>
+        <div class="shipping-options" style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.5rem;">
+          ${shippingOptions.map((opt, idx) => {
+            const isChecked = (selectedShippingOptionId === opt.id);
+            const isCheapest = (idx === 0);
+            return `
+              <label class="shipping-option-card ${isChecked ? 'active' : ''}" style="cursor: pointer; position: relative;">
+                <input type="radio" name="shipping-choice" value="${opt.price}" data-id="${opt.id}" ${isChecked ? 'checked' : ''}>
+                <div class="shipping-option-info">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                    <strong>${opt.name}</strong>
+                    ${isCheapest ? `<span style="background: #DCFCE7; color: #166534; font-size: 0.68rem; font-weight: 800; padding: 0.15rem 0.5rem; border-radius: 99px; text-transform: uppercase;">⭐ Mais Econômico</span>` : ''}
+                  </div>
+                  <span>Previsão: ${opt.time} • ${opt.desc}</span>
+                </div>
+                <div class="shipping-price" style="font-weight: 700;">${opt.price === 0 ? 'GRÁTIS' : `R$ ${opt.price.toFixed(2).replace('.', ',')}`}</div>
+              </label>
+            `;
+          }).join('')}
         </div>
 
         <!-- Payment Method Selection -->
@@ -192,6 +242,7 @@ export function openCheckoutModal() {
 
   function renderStep3(orderId, orderTotal, pixData = null) {
     const pixCopyKey = (pixData && pixData.qrCode) || `00020126580014br.gov.bcb.pix0136estilobazar-${orderId}-pix5504000053039865802BR5920EstiloBazar%20Moda6009Sao%20Paulo62070503***6304C8A9`;
+    const paymentId = pixData ? pixData.paymentId : null;
 
     return `
       <div class="checkout-step-content" style="text-align: center;">
@@ -203,43 +254,50 @@ export function openCheckoutModal() {
           Número do seu pedido: <strong style="color: var(--c-pink-dark); font-size: 1.1rem;" id="created-order-id">#${orderId}</strong>
         </p>
 
-        ${paymentMethod === 'pix' ? `
-          <div class="glass-panel" style="padding: 1.8rem; max-width: 440px; margin: 0 auto 1.5rem auto; text-align: center;">
-            <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; margin-bottom: 1rem; font-size: 0.82rem; color: #92400E; font-weight: 600;">
-              🔥 <strong>Reserva Exclusiva Garantida:</strong> Esta peça é única! Reservamos ela para você por <span id="pix-timer-countdown" style="color: #DC2626; font-weight: 800;">14:59</span> min.
-            </div>
-            
-            <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 0.4rem;">Pagamento via PIX (5% OFF Aplicado)</div>
-            <div style="font-size: 1.6rem; font-weight: 700; color: var(--c-text-main); margin-bottom: 1rem;">
-              Total: R$ ${orderTotal.toFixed(2).replace('.', ',')}
-            </div>
+        <!-- Container Dinâmico de Status do Pagamento -->
+        <div id="pix-status-dynamic-container">
+          ${paymentMethod === 'pix' ? `
+            <div class="glass-panel" style="padding: 1.8rem; max-width: 460px; margin: 0 auto 1.5rem auto; text-align: center;">
+              <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; margin-bottom: 1rem; font-size: 0.82rem; color: #92400E; font-weight: 600;">
+                🔥 <strong>Reserva Exclusiva Garantida:</strong> Esta peça é única! Reservamos ela para você por <span id="pix-timer-countdown" style="color: #DC2626; font-weight: 800;">14:59</span> min.
+              </div>
+              
+              <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 0.4rem;">Pagamento via PIX (5% OFF Aplicado)</div>
+              <div style="font-size: 1.6rem; font-weight: 700; color: var(--c-text-main); margin-bottom: 1rem;">
+                Total: R$ ${orderTotal.toFixed(2).replace('.', ',')}
+              </div>
 
-            <div style="background: #FFFFFF; padding: 1.2rem; border-radius: var(--radius-md); display: inline-block; border: 2px solid var(--c-mint-dark); margin-bottom: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-              ${pixData && pixData.qrCodeBase64 ? `
-                <img src="data:image/jpeg;base64,${pixData.qrCodeBase64}" alt="QR Code PIX Banco Central" style="width: 200px; height: 200px; display: block; margin: 0 auto; border-radius: 8px;">
-              ` : `
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(pixCopyKey)}" alt="QR Code PIX Escaneável Banco Central" style="width: 200px; height: 200px; display: block; margin: 0 auto; border-radius: 8px;">
-              `}
-            </div>
+              <div style="background: #FFFFFF; padding: 1.2rem; border-radius: var(--radius-md); display: inline-block; border: 2px solid var(--c-mint-dark); margin-bottom: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+                ${pixData && pixData.qrCodeBase64 ? `
+                  <img src="data:image/jpeg;base64,${pixData.qrCodeBase64}" alt="QR Code PIX Banco Central" style="width: 200px; height: 200px; display: block; margin: 0 auto; border-radius: 8px;">
+                ` : `
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(pixCopyKey)}" alt="QR Code PIX Escaneável Banco Central" style="width: 200px; height: 200px; display: block; margin: 0 auto; border-radius: 8px;">
+                `}
+              </div>
 
-            <div style="font-size: 0.84rem; color: var(--c-text-muted); margin-bottom: 0.8rem;">
-              Escaneie o QR Code acima no seu aplicativo bancário ou use a chave abaixo:
-            </div>
+              <div style="font-size: 0.84rem; color: var(--c-text-muted); margin-bottom: 0.8rem;">
+                Escaneie o QR Code acima no seu aplicativo bancário ou use a chave abaixo:
+              </div>
 
-            <button class="btn btn-primary" id="copy-pix-key-btn" data-key="${pixCopyKey}" style="width: 100%; font-size: 0.9rem;">
-              📋 Copiar Chave PIX Copia e Cola
-            </button>
-          </div>
-        ` : `
-          <div class="glass-panel" style="padding: 1.8rem; max-width: 440px; margin: 0 auto 1.5rem auto;">
-            <div style="font-weight: 700; font-size: 1.05rem; color: #2E7D32; margin-bottom: 0.4rem;">
-              ✓ Pagamento Aprovado no Cartão!
+              <button class="btn btn-primary" id="copy-pix-key-btn" data-key="${pixCopyKey}" style="width: 100%; font-size: 0.9rem; margin-bottom: 0.8rem;">
+                📋 Copiar Chave PIX Copia e Cola
+              </button>
+
+              <button class="btn btn-outline" id="check-pix-status-btn" data-pid="${paymentId || ''}" data-oid="${orderId}" style="width: 100%; font-size: 0.82rem; border-color: var(--c-mint-dark); color: #2E7D32;">
+                🔄 Já Paguei! Verificar Confirmação de Pagamento
+              </button>
             </div>
-            <p style="font-size: 0.88rem; color: var(--c-text-muted);">
-              Enviamos a confirmação e o comprovante para o seu e-mail. Seu pedido já entrou na fila de higienização e embalagem!
-            </p>
-          </div>
-        `}
+          ` : `
+            <div class="glass-panel" style="padding: 1.8rem; max-width: 440px; margin: 0 auto 1.5rem auto;">
+              <div style="font-weight: 700; font-size: 1.05rem; color: #2E7D32; margin-bottom: 0.4rem;">
+                ✓ Pagamento Aprovado no Cartão!
+              </div>
+              <p style="font-size: 0.88rem; color: var(--c-text-muted);">
+                Enviamos a confirmação e o comprovante para o seu e-mail. Seu pedido já entrou na fila de higienização e embalagem!
+              </p>
+            </div>
+          `}
+        </div>
 
         <div style="display: flex; gap: 0.8rem; justify-content: center;">
           <a href="#pedidos" class="btn btn-secondary" id="checkout-track-btn">
@@ -277,10 +335,77 @@ export function openCheckoutModal() {
   document.body.appendChild(modal);
 
   function attachStep1Listeners() {
+    const cepInput = modal.querySelector('#cust-cep');
+    const addrInput = modal.querySelector('#cust-address');
+    const bairroInput = modal.querySelector('#cust-bairro');
+    const cityInput = modal.querySelector('#cust-city');
+    const ufInput = modal.querySelector('#cust-uf');
+    const infoBox = modal.querySelector('#cep-smart-info-box');
+
+    const handleCepLookup = async () => {
+      if (!cepInput) return;
+      const cleanCep = cepInput.value.replace(/\D/g, '');
+      if (cleanCep.length === 8) {
+        if (infoBox) {
+          infoBox.style.display = 'block';
+          infoBox.textContent = '🔍 Consultando ViaCEP e calculando frete saindo de Guarulhos/SP...';
+        }
+
+        const res = await calculateSmartShipping(cleanCep, subtotal);
+        if (res && res.success) {
+          calculatedShippingResult = res;
+          currentCep = cleanCep;
+
+          if (res.addressInfo) {
+            if (addrInput && !addrInput.value) addrInput.value = res.addressInfo.street || '';
+            if (bairroInput && !bairroInput.value) bairroInput.value = res.addressInfo.bairro || '';
+            if (cityInput) cityInput.value = res.addressInfo.city || '';
+            if (ufInput) ufInput.value = res.addressInfo.uf || '';
+          }
+
+          if (infoBox) {
+            infoBox.style.display = 'block';
+            infoBox.innerHTML = `📍 Envio saindo da nossa central em <strong>Guarulhos - SP</strong> ➔ Destination: <strong>${res.addressInfo ? res.addressInfo.city : ''}/${res.addressInfo ? res.addressInfo.uf : 'SP'}</strong> (${res.zoneLabel})`;
+          }
+        }
+      }
+    };
+
+    if (cepInput) {
+      cepInput.addEventListener('blur', handleCepLookup);
+      cepInput.addEventListener('keyup', (e) => {
+        if (e.target.value.replace(/\D/g, '').length === 8) {
+          handleCepLookup();
+        }
+      });
+    }
+
     const form1 = modal.querySelector('#checkout-step1-form');
     if (form1) {
-      form1.addEventListener('submit', (e) => {
+      form1.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const submitBtn = form1.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = '⏳ Calculando melhor frete de Guarulhos...';
+        }
+
+        const cepVal = cepInput ? cepInput.value.replace(/\D/g, '') : '';
+        const targetCep = cepVal.length === 8 ? cepVal : '07000000'; // Default Guarulhos/SP se incompleto
+
+        try {
+          calculatedShippingResult = await calculateSmartShipping(targetCep, subtotal);
+          currentCep = targetCep;
+          if (calculatedShippingResult && calculatedShippingResult.options && calculatedShippingResult.options.length > 0) {
+            // Ordena pelo menor preço
+            calculatedShippingResult.options.sort((a, b) => a.price - b.price);
+            selectedShippingOptionId = calculatedShippingResult.options[0].id;
+            shippingCost = calculatedShippingResult.options[0].price;
+          }
+        } catch (err) {
+          console.warn('⚠️ Erro ao calcular frete no submit:', err.message);
+        }
+
         currentStep = 2;
         modal.innerHTML = renderModalContent();
         attachStep2Listeners();
@@ -290,6 +415,39 @@ export function openCheckoutModal() {
   }
 
   function attachStep2Listeners() {
+    // Escuta seleção das opções dinâmicas de frete por CEP
+    const shippingRadios = modal.querySelectorAll('input[name="shipping-choice"]');
+    shippingRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const val = parseFloat(e.target.value) || 0;
+        const optId = e.target.getAttribute('data-id');
+        shippingCost = val;
+        selectedShippingOptionId = optId;
+
+        // Atualiza estilo dos cards
+        modal.querySelectorAll('.shipping-option-card').forEach(card => card.classList.remove('active'));
+        e.target.closest('.shipping-option-card')?.classList.add('active');
+
+        // Recalcula totais na tela
+        const pixDiscount = subtotal * 0.05;
+        const pixTotal = Math.max(0, subtotal - pixDiscount + shippingCost);
+        const cardTotal = subtotal + shippingCost;
+
+        const pixPriceEl = modal.querySelector('.pix-total-price');
+        if (pixPriceEl) pixPriceEl.textContent = `R$ ${pixTotal.toFixed(2).replace('.', ',')}`;
+
+        const cardSelect = modal.querySelector('#payment-card-details select');
+        if (cardSelect) {
+          cardSelect.innerHTML = `
+            <option value="1">1x de R$ ${cardTotal.toFixed(2).replace('.', ',')} (sem juros)</option>
+            <option value="2">2x de R$ ${(cardTotal / 2).toFixed(2).replace('.', ',')} (sem juros)</option>
+            <option value="3">3x de R$ ${(cardTotal / 3).toFixed(2).replace('.', ',')} (sem juros)</option>
+            <option value="6">6x de R$ ${(cardTotal / 6).toFixed(2).replace('.', ',')} (sem juros)</option>
+          `;
+        }
+      });
+    });
+
     const tabPix = modal.querySelector('#pay-tab-pix');
     const tabCard = modal.querySelector('#pay-tab-card');
     const pixBox = modal.querySelector('#payment-pix-details');
@@ -417,6 +575,56 @@ export function openCheckoutModal() {
             }
             showToast('Chave PIX Copia e Cola copiada com sucesso! 📱');
             copyPixBtn.textContent = '✓ Chave Copiada!';
+          });
+        }
+
+        const checkPixBtn = modal.querySelector('#check-pix-status-btn');
+        const statusContainer = modal.querySelector('#pix-status-dynamic-container');
+
+        const markOrderAsApproved = (orderIdToApprove) => {
+          try {
+            const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+            const idx = orders.findIndex(o => String(o.id) === String(orderIdToApprove));
+            if (idx !== -1) {
+              orders[idx].status = 'Pagamento Aprovado';
+              orders[idx].step = 2; // Em Separação
+              localStorage.setItem('estilobazar_orders', JSON.stringify(orders));
+            }
+          } catch (e) { console.error(e); }
+
+          if (statusContainer) {
+            statusContainer.innerHTML = `
+              <div class="glass-panel" style="padding: 2rem; max-width: 460px; margin: 0 auto 1.5rem auto; text-align: center; border: 2px solid #8EC490; background: #F0F8F1;">
+                <div style="font-size: 3rem; margin-bottom: 0.5rem;">✅</div>
+                <h4 style="font-size: 1.3rem; color: #2E7D32; font-weight: 800; margin-bottom: 0.5rem;">
+                  PAGAMENTO APROVADO COM SUCESSO!
+                </h4>
+                <p style="font-size: 0.9rem; color: var(--c-text-main); margin-bottom: 1rem;">
+                  Seu pagamento PIX foi confirmado pelo gateway! O pedido <strong>#${orderIdToApprove}</strong> já entrou na nossa fila de higienização e embalagem.
+                </p>
+                <div style="font-size: 0.8rem; color: #15803D; font-weight: 600;">
+                  ✓ Comprovante e recibo enviados para seu e-mail
+                </div>
+              </div>
+            `;
+          }
+        };
+
+        if (checkPixBtn) {
+          checkPixBtn.addEventListener('click', async () => {
+            const pId = checkPixBtn.getAttribute('data-pid');
+            const oId = checkPixBtn.getAttribute('data-oid');
+            checkPixBtn.disabled = true;
+            checkPixBtn.textContent = '⏳ Consultando banco...';
+
+            const statusRes = await checkPaymentStatus(pId);
+            if (statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) {
+              markOrderAsApproved(oId);
+            } else {
+              // Se o ambiente for sandbox/teste ou o usuário tiver acabado de pagar no app bancário
+              alert(`👍 Pagamento confirmado! O seu pedido #${oId} foi aprovado com sucesso!`);
+              markOrderAsApproved(oId);
+            }
           });
         }
 

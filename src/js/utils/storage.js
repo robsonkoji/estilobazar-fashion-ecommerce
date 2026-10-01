@@ -19,23 +19,63 @@ export function saveCart(cart) {
   }
 }
 
-export function addToCart(product) {
+export function addToCart(product, quantityToAdd = 1) {
   const cart = getCart();
+  const maxStock = (typeof product.stock === 'number' && product.stock >= 0) ? product.stock : 1;
   const existing = cart.find(item => item.id === product.id);
+  
   if (existing) {
-    existing.quantity = (existing.quantity || 1) + 1;
+    const currentQty = existing.quantity || 1;
+    if (currentQty + quantityToAdd > maxStock) {
+      showToast(`Ops! Restam apenas ${maxStock} unidade(s) de "${product.title}" em estoque. 📦`);
+      return false;
+    }
+    existing.quantity = currentQty + quantityToAdd;
+    existing.maxStock = maxStock;
   } else {
-    cart.push({ ...product, quantity: 1 });
+    if (quantityToAdd > maxStock) {
+      showToast(`Ops! Restam apenas ${maxStock} unidade(s) de "${product.title}" em estoque. 📦`);
+      return false;
+    }
+    cart.push({ ...product, quantity: quantityToAdd, maxStock });
   }
+  
   saveCart(cart);
   showToast(`"${product.title}" adicionado ao carrinho! ✨`);
+  return true;
+}
+
+export function updateCartQuantity(productId, delta) {
+  const cart = getCart();
+  const item = cart.find(i => i.id === productId);
+  if (!item) return;
+
+  const maxStock = (typeof item.stock === 'number' && item.stock >= 0) ? item.stock : (item.maxStock || 1);
+  const currentQty = item.quantity || 1;
+  const targetQty = currentQty + delta;
+
+  if (targetQty <= 0) {
+    removeFromCart(productId);
+    return;
+  }
+
+  if (targetQty > maxStock) {
+    showToast(`Estoque máximo atingido! Restam apenas ${maxStock} unidade(s) de "${item.title}". 📦`);
+    return;
+  }
+
+  item.quantity = targetQty;
+  saveCart(cart);
 }
 
 export function removeFromCart(productId) {
   let cart = getCart();
-  cart = cart.filter(item => item.id !== productId);
+  const item = cart.find(i => i.id === productId);
+  cart = cart.filter(i => i.id !== productId);
   saveCart(cart);
-  showToast('Item removido do carrinho.');
+  if (item) {
+    showToast(`"${item.title}" removido do carrinho.`);
+  }
 }
 
 export function clearCart() {

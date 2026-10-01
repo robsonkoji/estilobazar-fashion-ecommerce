@@ -115,6 +115,29 @@ estilobazar/
 
 ---
 
+## 🔄 Conceito de Flow & Esteira CI/CD (DEV ➔ HOM ➔ PRD)
+
+Seguimos o **GitHub Flow** com integração contínua e implantação contínua (CI/CD) automatizada via **GitHub Actions** e **Firebase Hosting**:
+
+```
+[ feature/* ] ➔ (PR & Preview URL) ➔ [ develop / DEV ] ➔ [ staging / HOM ] ➔ [ main / PRD ]
+```
+
+1. **Desenvolvimento (`feature/*` ou `fix/*`)**:
+   - Crie uma branch a partir de `develop` para novas funcionalidades.
+   - Abra um **Pull Request (PR)** para a branch `staging` ou `develop`.
+   - O GitHub Actions compilará e gerará automaticamente uma **URL de Pré-visualização Única (Preview Channel)** no Firebase para validação de layout e funcionalidade.
+
+2. **Homologação (`homolog` / `staging`)**:
+   - Ao aprovar o PR, as alterações vão para a branch `staging`.
+   - O deploy é feito automaticamente no ambiente de **Homologação (HOM)** para validação final.
+
+3. **Produção (`main`)**:
+   - Após validação em HOM, é feito o merge para a branch `main`.
+   - O deploy em **Produção (PRD)** em `estilobazar.com.br` ocorre automaticamente, sem necessidade de build manual.
+
+---
+
 ## 📄 Licença
 Este projeto é de propriedade exclusiva da **EstiloBazar**. Todos os direitos reservados.
 

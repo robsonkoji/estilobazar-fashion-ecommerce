@@ -1,0 +1,128 @@
+name: Esteira CI/CD Multi-Ambiente (DEV -> HOM -> PRD)
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - homolog
+      - develop
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # 1. Validação, Linter e Build
+  build_and_validate:
+    name: 🏗️ Validar & Compilar (Build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurar Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Instalar Dependências
+        run: npm ci
+
+      - name: 🛠️ Compilar Projeto (Vite Build)
+        run: npm run build
+
+      - name: 💾 Armazenar Build como Artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-build
+          path: dist
+          retention-days: 1
+
+  # 2. Deploy para Ambiente DEV (Branch: develop)
+  deploy_dev:
+    name: 🚀 Deploy para DEV (Canal Dev)
+    needs: build_and_validate
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: 📦 Baixar Artefato Compilado
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-build
+          path: dist
+
+      - name: 🔥 Deploy Firebase Hosting (Canal DEV)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ESTILOBAZAR_PRD }}'
+          projectId: estilobazar-prd
+          channelId: dev
+          expires: 30d
+
+  # 3. Deploy para Ambiente HOMOLOGAÇÃO (Branches: staging / homolog)
+  deploy_hom:
+    name: 🧪 Deploy para HOMOLOGAÇÃO (Canal Homolog)
+    needs: build_and_validate
+    if: github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/homolog'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: 📦 Baixar Artefato Compilado
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-build
+          path: dist
+
+      - name: 🔥 Deploy Firebase Hosting (Canal Homolog)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ESTILOBAZAR_PRD }}'
+          projectId: estilobazar-prd
+          channelId: homolog
+          expires: 30d
+
+  # 4. Deploy para Ambiente PRODUÇÃO (Branch: main ou Tag v*)
+  deploy_prd:
+    name: 🛡️ Deploy para PRODUÇÃO (estilobazar.com.br) & GitHub Release
+    needs: build_and_validate
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: 📦 Baixar Artefato Compilado
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-build
+          path: dist
+
+      - name: 🚀 Publicar em Produção (Firebase Live Target)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ESTILOBAZAR_PRD }}'
+          projectId: estilobazar-prd
+          channelId: live
+
+      - name: 🏷️ Gerar GitHub Release & Changelog Automático
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v1.0.{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('Release v1.0.{0} - Produção', github.run_number) }}
+          generate_release_notes: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

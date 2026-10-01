@@ -1,0 +1,32 @@
+name: PR Preview Deploy (Validação Isolada por PR)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr_preview_deploy:
+    name: 🔍 Deploy de Pré-visualização do PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurar Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Instalar Dependências
+        run: npm ci
+
+      - name: 🛠️ Compilar Projeto
+        run: npm run build
+
+      - name: 🌐 Criar URL Temporária de Preview no Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ESTILOBAZAR_PRD }}'
+          projectId: estilobazar-prd

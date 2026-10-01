@@ -66,8 +66,12 @@ export function openProductModal(product) {
               <span class="badge-size" style="font-size: 0.85rem; padding: 0.2rem 0.6rem;">Tamanho: ${product.size}</span>
             </div>
 
-            <div style="background: var(--bg-base); border: 1px solid var(--c-mint); padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.88rem;">
-              <strong>Estado de Conservação:</strong> ${product.condition}
+            <div style="background: var(--bg-base); border: 1px solid var(--c-mint); padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.88rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+              <div><strong>Estado de Conservação:</strong> ${product.condition}</div>
+              ${((typeof product.stock === 'number' && product.stock >= 0) ? product.stock : 1) === 1
+                ? `<span style="font-size: 0.78rem; color: #C62828; background: #FFEBEE; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 99px;">⚠️ Peça Única em Estoque</span>`
+                : `<span style="font-size: 0.78rem; color: #15803D; background: #DCFCE7; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 99px;">📦 ${product.stock} unidades em estoque</span>`
+              }
             </div>
 
             ${measurementsHTML ? `
@@ -144,8 +148,10 @@ export function openProductModal(product) {
 
   const addBtn = modal.querySelector('#modal-add-cart-btn');
   addBtn.addEventListener('click', () => {
-    addToCart(product);
-    modal.remove();
+    const success = addToCart(product);
+    if (success) {
+      modal.remove();
+    }
   });
 
   const favBtn = modal.querySelector('#modal-fav-btn');

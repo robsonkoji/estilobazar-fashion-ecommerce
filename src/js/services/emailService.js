@@ -178,3 +178,98 @@ export function listenAndAutoSendVipEmails() {
     console.warn('⚠️ Não foi possível iniciar escutador Firestore:', e.message);
   }
 }
+
+/**
+ * Dispara e-mail transacional notificando o cliente sobre o despacho e código de rastreio
+ */
+export async function sendTrackingEmail(orderData, trackingCode) {
+  const recipientEmail = orderData.customerEmail || orderData.email;
+  if (!recipientEmail) return { success: false, error: 'E-mail não informado' };
+
+  const orderId = orderData.id || orderData.orderId || 'EB1001';
+  const customerName = orderData.customerName || 'Cliente VIP';
+  const correiosUrl = `https://rastreamento.correios.com.br/app/index.php?codigo=${trackingCode}`;
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <title>Pedido Postado nos Correios - EstiloBazar</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Outfit', sans-serif; background-color: #FAF9F6; color: #2C302E;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #FAF9F6; padding: 30px 15px;">
+        <tr>
+          <td align="center">
+            <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid rgba(196, 230, 197, 0.6);">
+              <tr>
+                <td align="center" style="background: linear-gradient(135deg, #FDF0F0 0%, #FAF9F6 100%); padding: 30px 20px; border-bottom: 1px solid #F8C2C2;">
+                  <div style="font-family: Georgia, serif; font-size: 28px; font-weight: 700; color: #2C302E;">EstiloBazar</div>
+                  <div style="color: #E4A1A1; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700;">Moda Circular & Brechó Curado</div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 35px 30px; text-align: center;">
+                  <div style="font-size: 3rem; margin-bottom: 0.5rem;">🚚📦</div>
+                  <span style="background-color: #F0F8F1; color: #2E7D32; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 99px; text-transform: uppercase;">
+                    Pedido Postado nos Correios!
+                  </span>
+
+                  <h2 style="font-size: 22px; color: #2C302E; font-weight: 700; margin: 15px 0 10px;">
+                    Olá, ${customerName}! Seu garimpo já está a caminho! ✨
+                  </h2>
+
+                  <p style="color: #5C6560; font-size: 14px; line-height: 1.6; margin-bottom: 25px;">
+                    Seu pedido <strong>#${orderId}</strong> foi higienizado a 120°C, embalado e postado na nossa agência central dos Correios em <strong>Guarulhos - SP</strong>.
+                  </p>
+
+                  <div style="background: #FAF9F6; border: 2px dashed #8EC490; border-radius: 16px; padding: 20px; margin-bottom: 25px;">
+                    <div style="font-size: 12px; color: #5C6560; font-weight: 700; text-transform: uppercase;">Código de Rastreamento Correios:</div>
+                    <div style="font-size: 26px; font-weight: 800; color: #E4A1A1; letter-spacing: 3px; margin: 10px 0;">
+                      ${trackingCode}
+                    </div>
+                    <a href="${correiosUrl}" target="_blank" style="display: inline-block; background-color: #8EC490; color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 28px; border-radius: 99px; margin-top: 5px;">
+                      🔗 Rastrear nos Correios
+                    </a>
+                  </div>
+
+                  <p style="font-size: 12px; color: #5C6560;">
+                    Você também pode acompanhar a linha do tempo do envio diretamente no nosso site acessando <a href="https://estilobazar.com.br/#pedidos" style="color: #E4A1A1; font-weight: bold;">estilobazar.com.br/#pedidos</a>.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  try {
+    let response = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: recipientEmail, subject: `🚚 Seu pedido #${orderId} foi postado! Rastreio: ${trackingCode}`, html: emailHtml })
+    }).catch(() => null);
+
+    if (!response || !response.ok) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'EstiloBazar <contato@estilobazar.com.br>',
+          to: [recipientEmail],
+          subject: `🚚 Seu pedido #${orderId} foi postado! Rastreio: ${trackingCode}`,
+          html: emailHtml
+        })
+      }).catch(() => {});
+    }
+
+    console.log(`✅ E-mail de rastreamento enviado com sucesso para ${recipientEmail}`);
+    return { success: true };
+  } catch (err) {
+    console.warn('⚠️ Erro ao enviar e-mail de rastreamento:', err.message);
+    return { success: false, error: err.message };
+  }
+}

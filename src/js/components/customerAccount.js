@@ -301,12 +301,22 @@ function renderTabContent(customer) {
                   <span style="font-size: 1.1rem; font-weight: 700; margin-right: 0.5rem;">Total: R$ ${order.total.toFixed(2).replace('.', ',')}</span>
                   
                   ${!order.isCancelled ? `
-                    <button class="btn btn-outline btn-cancel-order-action" data-id="${order.id}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; color: #DC2626; border-color: #FCA5A5;">
-                      ❌ Cancelar Compra
-                    </button>
+                    ${(order.step >= 3 || order.trackingCode) ? `
+                      <button class="btn btn-outline btn-return-order-action" data-id="${order.id}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; color: #D97706; border-color: #FCD34D;">
+                        🔄 Solicitar Devolução (CDC 7 dias)
+                      </button>
+                    ` : order.isPending ? `
+                      <button class="btn btn-outline btn-cancel-unpaid-action" data-id="${order.id}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; color: #6B7280; border-color: #D1D5DB;">
+                        ❌ Cancelar PIX Pendente
+                      </button>
+                    ` : `
+                      <button class="btn btn-outline btn-cancel-order-action" data-id="${order.id}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; color: #DC2626; border-color: #FCA5A5;">
+                        ❌ Cancelar Compra
+                      </button>
+                    `}
                   ` : ''}
 
-                  <button class="btn btn-outline btn-track-order-action" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                  <button class="btn btn-outline btn-track-order-action" data-id="${order.id}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
                     🚚 Rastrear
                   </button>
                 </div>
@@ -530,7 +540,45 @@ export function setupCustomerAccountListeners(onAuthSuccess) {
     });
   });
 
-  // Ação de Cancelamento de Pedido com Modal de Retenção Shopify (+10% Bônus em Crédito)
+  // Ação de Cancelar PIX Pendente (NÃO concede saldo/crédito pois o valor não foi recebido)
+  document.querySelectorAll('.btn-cancel-unpaid-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const orderId = btn.getAttribute('data-id');
+      if (confirm(`Deseja cancelar a reserva do Pedido #${orderId}?\n\nComo o PIX ainda não foi pago, a cobrança será anulada e a peça liberada para a loja. Nenhum valor de saldo ou reembolso será emitido.`)) {
+        try {
+          const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+          const idx = orders.findIndex(o => String(o.id) === String(orderId));
+          if (idx !== -1) {
+            orders[idx].status = 'Cancelado por Falta de Pagamento';
+            orders[idx].statusColor = '#9CA3AF';
+            localStorage.setItem('estilobazar_orders', JSON.stringify(orders));
+          }
+        } catch (e) { console.error(e); }
+        alert(`✅ Pedido #${orderId} cancelado com sucesso. A peça foi liberada para o acervo.`);
+        refreshView();
+      }
+    });
+  });
+
+  // Ação de Solicitar Devolução de Pedido Enviado / Entregue (Logística Reversa CDC 7 dias)
+  document.querySelectorAll('.btn-return-order-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const orderId = btn.getAttribute('data-id');
+      alert(`📦 Solicitação de Devolução Registrada! (Pedido #${orderId})\n\nDe acordo com o Art. 49 do CDC, geramos uma autorização de postagem gratuita dos Correios (Logística Reversa).\n\nCódigo de Postagem Grátis: 849204918\n\nAssim que o pacote for entregue de volta na central EstiloBazar e passar pelo controle de qualidade, o estorno/crédito será liberado na sua conta.`);
+      try {
+        const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+        const idx = orders.findIndex(o => String(o.id) === String(orderId));
+        if (idx !== -1) {
+          orders[idx].status = 'Devolução Solicitada (Postagem Grátis Gerada)';
+          orders[idx].statusColor = '#D97706';
+          localStorage.setItem('estilobazar_orders', JSON.stringify(orders));
+        }
+      } catch (e) { console.error(e); }
+      refreshView();
+    });
+  });
+
+  // Ação de Cancelamento de Pedido Pago Antes do Envio (Modal com opção de +10% Bônus ou Análise Admin)
   document.querySelectorAll('.btn-cancel-order-action').forEach(btn => {
     btn.addEventListener('click', () => {
       const orderId = btn.getAttribute('data-id');
