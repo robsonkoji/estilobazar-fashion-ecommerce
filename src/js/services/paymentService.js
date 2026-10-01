@@ -162,6 +162,27 @@ export async function checkPaymentStatus(paymentId) {
     return { status: 'approved' };
   }
 
+  // 1. Tenta consultar via API Serverless /api/check-pix (evita erros de CORS no navegador)
+  try {
+    const apiResponse = await fetch(`/api/check-pix?paymentId=${paymentId}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (apiResponse.ok) {
+      const data = await apiResponse.json();
+      if (data && data.status) {
+        return {
+          status: data.status, // 'pending', 'approved', etc.
+          statusDetail: data.statusDetail
+        };
+      }
+    }
+  } catch (apiErr) {
+    console.warn('⚠️ Tentando consulta direta ao gateway...', apiErr.message);
+  }
+
+  // 2. Chamada direta de fallback ao Mercado Pago API
   try {
     const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       method: 'GET',
@@ -173,7 +194,7 @@ export async function checkPaymentStatus(paymentId) {
     if (response.ok) {
       const data = await response.json();
       return {
-        status: data.status, // 'pending', 'approved', 'cancelled', etc.
+        status: data.status,
         statusDetail: data.status_detail
       };
     }

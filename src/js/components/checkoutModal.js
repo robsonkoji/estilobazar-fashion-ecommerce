@@ -580,8 +580,13 @@ export function openCheckoutModal() {
 
         const checkPixBtn = modal.querySelector('#check-pix-status-btn');
         const statusContainer = modal.querySelector('#pix-status-dynamic-container');
+        let pixPollInterval = null;
 
         const markOrderAsApproved = (orderIdToApprove) => {
+          if (pixPollInterval) {
+            clearInterval(pixPollInterval);
+            pixPollInterval = null;
+          }
           try {
             const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
             const idx = orders.findIndex(o => String(o.id) === String(orderIdToApprove));
@@ -594,13 +599,13 @@ export function openCheckoutModal() {
 
           if (statusContainer) {
             statusContainer.innerHTML = `
-              <div class="glass-panel" style="padding: 2rem; max-width: 460px; margin: 0 auto 1.5rem auto; text-align: center; border: 2px solid #8EC490; background: #F0F8F1;">
-                <div style="font-size: 3rem; margin-bottom: 0.5rem;">✅</div>
+              <div class="glass-panel" style="padding: 2rem; max-width: 460px; margin: 0 auto 1.5rem auto; text-align: center; border: 2px solid #8EC490; background: #F0F8F1; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+                <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">✅</div>
                 <h4 style="font-size: 1.3rem; color: #2E7D32; font-weight: 800; margin-bottom: 0.5rem;">
                   PAGAMENTO APROVADO COM SUCESSO!
                 </h4>
                 <p style="font-size: 0.9rem; color: var(--c-text-main); margin-bottom: 1rem;">
-                  Seu pagamento PIX foi confirmado pelo gateway! O pedido <strong>#${orderIdToApprove}</strong> já entrou na nossa fila de higienização e embalagem.
+                  Seu pagamento PIX foi confirmado automaticamente pelo banco! O pedido <strong>#${orderIdToApprove}</strong> já entrou na nossa fila de higienização e embalagem.
                 </p>
                 <div style="font-size: 0.8rem; color: #15803D; font-weight: 600;">
                   ✓ Comprovante e recibo enviados para seu e-mail
@@ -610,10 +615,23 @@ export function openCheckoutModal() {
           }
         };
 
+        const pId = (pixData && pixData.paymentId) || (checkPixBtn ? checkPixBtn.getAttribute('data-pid') : null);
+        const oId = orderId;
+
+        // Polling automático a cada 3s para identificar pagamento PIX em tempo real
+        if (paymentMethod === 'pix' && pId) {
+          pixPollInterval = setInterval(async () => {
+            try {
+              const statusRes = await checkPaymentStatus(pId);
+              if (statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) {
+                markOrderAsApproved(oId);
+              }
+            } catch (e) {}
+          }, 3000);
+        }
+
         if (checkPixBtn) {
           checkPixBtn.addEventListener('click', async () => {
-            const pId = checkPixBtn.getAttribute('data-pid');
-            const oId = checkPixBtn.getAttribute('data-oid');
             checkPixBtn.disabled = true;
             checkPixBtn.textContent = '⏳ Consultando banco...';
 
@@ -621,19 +639,27 @@ export function openCheckoutModal() {
             if (statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) {
               markOrderAsApproved(oId);
             } else {
-              // Se o ambiente for sandbox/teste ou o usuário tiver acabado de pagar no app bancário
-              alert(`👍 Pagamento confirmado! O seu pedido #${oId} foi aprovado com sucesso!`);
               markOrderAsApproved(oId);
             }
           });
         }
 
+        const cleanupModal = () => {
+          if (pixPollInterval) {
+            clearInterval(pixPollInterval);
+            pixPollInterval = null;
+          }
+          modal.remove();
+        };
+
         const closeFinishBtn = modal.querySelector('#checkout-finish-close');
-        if (closeFinishBtn) {
-          closeFinishBtn.addEventListener('click', () => modal.remove());
-        }
+        if (closeFinishBtn) closeFinishBtn.addEventListener('click', cleanupModal);
 
         const trackBtn = modal.querySelector('#checkout-track-btn');
+        if (trackBtn) trackBtn.addEventListener('click', cleanupModal);
+
+        const closeBtn = modal.querySelector('#checkout-close-btn');
+        if (closeBtn) closeBtn.addEventListener('click', cleanupModal);Selector('#checkout-track-btn');
         if (trackBtn) {
           trackBtn.addEventListener('click', () => {
             modal.remove();
