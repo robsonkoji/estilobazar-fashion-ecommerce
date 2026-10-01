@@ -78,8 +78,15 @@ export function openOrdersModal() {
                 `).join('')}
               </div>
 
-              <div style="text-align: right; font-weight: 700; font-size: 1.1rem; margin-top: 0.5rem;">
-                Total: R$ ${order.total.toFixed(2).replace('.', ',')}
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem; margin-top: 0.8rem; pt-0.5rem; border-top: 1px solid rgba(0,0,0,0.06);">
+                ${order.step < 2 ? `
+                  <button class="btn btn-outline btn-modal-confirm-pix" data-id="${order.id}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; background: #DCFCE7; color: #15803D; border-color: #8EC490; font-weight: 700;">
+                    ✅ Já Paguei o PIX (Confirmar)
+                  </button>
+                ` : `<span></span>`}
+                <div style="font-weight: 700; font-size: 1.1rem;">
+                  Total: R$ ${order.total.toFixed(2).replace('.', ',')}
+                </div>
               </div>
             </div>
           `).join('')}
@@ -89,6 +96,24 @@ export function openOrdersModal() {
   `;
 
   document.body.appendChild(modal);
+
+  modal.querySelectorAll('.btn-modal-confirm-pix').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const orderId = btn.getAttribute('data-id');
+      try {
+        const ordersList = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+        const idx = ordersList.findIndex(o => String(o.id) === String(orderId));
+        if (idx !== -1) {
+          ordersList[idx].status = 'Pagamento Aprovado';
+          ordersList[idx].step = 2; // Em Separação
+          localStorage.setItem('estilobazar_orders', JSON.stringify(ordersList));
+        }
+      } catch (e) { console.error(e); }
+      showToast(`✅ Pagamento do Pedido #${orderId} confirmado com sucesso!`);
+      modal.remove();
+      openOrdersModal();
+    });
+  });
 
   const closeBtn = modal.querySelector('#orders-close-btn');
   if (closeBtn) closeBtn.addEventListener('click', () => modal.remove());

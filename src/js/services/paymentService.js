@@ -158,7 +158,7 @@ export async function processCreditCardPayment(cardData, orderData) {
  * @returns {Promise<Object>} Status atual
  */
 export async function checkPaymentStatus(paymentId) {
-  if (!paymentId || String(paymentId).startsWith('pay_card_')) {
+  if (!paymentId || String(paymentId).startsWith('pay_card_') || String(paymentId).startsWith('pix_local_')) {
     return { status: 'approved' };
   }
 

@@ -262,9 +262,14 @@ function renderTabContent(customer) {
                   <div style="font-size: 0.85rem; color: #92400E; font-weight: 600;">
                     ⏳ Aguardando pagamento via PIX. Pague para garantir suas peças garimpadas!
                   </div>
-                  <button class="btn btn-primary btn-pay-pix-action" data-id="${order.id}" data-total="${order.total}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; background: #D97706; border: none;">
-                    📲 Pagar Agora com PIX
-                  </button>
+                  <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <button class="btn btn-outline btn-confirm-pix-action" data-id="${order.id}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; background: #DCFCE7; color: #15803D; border-color: #8EC490; font-weight: 700;">
+                      ✅ Já Paguei o PIX (Confirmar)
+                    </button>
+                    <button class="btn btn-primary btn-pay-pix-action" data-id="${order.id}" data-total="${order.total}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; background: #D97706; border: none;">
+                      📲 Ver Chave PIX
+                    </button>
+                  </div>
                 </div>
               ` : ''}
 
@@ -587,6 +592,24 @@ export function setupCustomerAccountListeners(onAuthSuccess) {
       const orderTotal = targetOrder.total || 100;
 
       openCancelRetentionModal(orderId, orderTotal, refreshView);
+    });
+  });
+
+  // Ação de Confirmar PIX em Tempo Real (Cliente)
+  document.querySelectorAll('.btn-confirm-pix-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const orderId = btn.getAttribute('data-id');
+      try {
+        const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+        const idx = orders.findIndex(o => String(o.id) === String(orderId));
+        if (idx !== -1) {
+          orders[idx].status = 'Pagamento Aprovado';
+          orders[idx].step = 2; // Em Separação
+          localStorage.setItem('estilobazar_orders', JSON.stringify(orders));
+        }
+      } catch (e) { console.error(e); }
+      alert(`✅ Pagamento do Pedido #${orderId} confirmado com sucesso!\n\nO status foi atualizado para "Pagamento Aprovado" e as peças entraram na fila de higienização e embalagem.`);
+      refreshView();
     });
   });
 
