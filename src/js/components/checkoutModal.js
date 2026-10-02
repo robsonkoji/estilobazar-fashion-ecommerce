@@ -1,5 +1,5 @@
 import { getCart, clearCart, showToast } from '../utils/storage.js';
-import { createPixPayment, processCreditCardPayment, checkPaymentStatus } from '../services/paymentService.js';
+import { createPixPayment, processCreditCardPayment, checkPaymentStatus, createCheckoutProPreference } from '../services/paymentService.js';
 import { calculateSmartShipping, fetchAddressByCep } from '../services/shippingService.js';
 
 export function openCheckoutModal() {
@@ -26,7 +26,7 @@ export function openCheckoutModal() {
   modal.id = 'checkout-modal';
 
   let currentStep = 1;
-  let paymentMethod = 'pix'; // 'pix' | 'card'
+  let paymentMethod = 'mp_pro'; // 'mp_pro' | 'pix' | 'card'
 
   function renderStep1() {
     return `
@@ -172,15 +172,38 @@ export function openCheckoutModal() {
 
         <!-- Payment Method Selection -->
         <div class="checkout-block-title">Forma de Pagamento:</div>
-        <div class="payment-tabs">
-          <button type="button" class="payment-tab ${paymentMethod === 'pix' ? 'active' : ''}" id="pay-tab-pix">
-            <span>✨ PIX</span>
+        <div class="payment-tabs" style="display: flex; gap: 0.4rem; margin-bottom: 1.2rem;">
+          <button type="button" class="payment-tab ${paymentMethod === 'mp_pro' ? 'active' : ''}" id="pay-tab-mppro" style="flex: 1.2;">
+            <span>🛡️ Mercado Pago Pro</span>
+            <span class="badge-discount" style="background: #009EE3; color: white;">Auto-Aprovado</span>
+          </button>
+          <button type="button" class="payment-tab ${paymentMethod === 'pix' ? 'active' : ''}" id="pay-tab-pix" style="flex: 1;">
+            <span>✨ PIX Direto</span>
             <span class="badge-discount">-5% OFF</span>
           </button>
-          <button type="button" class="payment-tab ${paymentMethod === 'card' ? 'active' : ''}" id="pay-tab-card">
-            <span>💳 Cartão de Crédito</span>
+          <button type="button" class="payment-tab ${paymentMethod === 'card' ? 'active' : ''}" id="pay-tab-card" style="flex: 1;">
+            <span>💳 Cartão</span>
             <span class="badge-sub">Até 6x</span>
           </button>
+        </div>
+
+        <!-- Mercado Pago Checkout Pro Box -->
+        <div id="payment-mppro-details" style="display: ${paymentMethod === 'mp_pro' ? 'block' : 'none'};" class="payment-box">
+          <div style="background: linear-gradient(135deg, #E0F2FE 0%, #FFFFFF 100%); border: 2px solid #009EE3; border-radius: var(--radius-md); padding: 1.2rem; text-align: center; box-shadow: 0 4px 15px rgba(0, 158, 227, 0.12);">
+            <div style="font-size: 2.2rem; margin-bottom: 0.3rem;">🛡️</div>
+            <div style="font-weight: 800; font-size: 1.05rem; color: #0070A3; margin-bottom: 0.3rem;">
+              Mercado Pago Checkout Pro (100% Seguro &amp; Automático)
+            </div>
+            <p style="font-size: 0.85rem; color: var(--c-text-main); margin-bottom: 0.8rem; line-height: 1.4;">
+              Pague via <strong>PIX</strong> (com 5% OFF) ou <strong>Cartão em até 6x</strong> na página oficial criptografada do Mercado Pago. O pagamento é <strong>aprovado em tempo real</strong> pelo Banco Central!
+            </p>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #0070A3; margin-bottom: 0.4rem;" class="pix-total-price">
+              Total: R$ ${pixTotal.toFixed(2).replace('.', ',')}
+            </div>
+            <div style="font-size: 0.78rem; color: #0369A1; font-weight: 600;">
+              ✓ Redirecionamento seguro com confirmação automática de pedido
+            </div>
+          </div>
         </div>
 
         <!-- PIX Form / Details -->
@@ -189,7 +212,7 @@ export function openCheckoutModal() {
             <div style="font-size: 0.9rem; color: var(--c-text-muted);">Total com 5% de desconto no PIX:</div>
             <div class="pix-total-price">R$ ${pixTotal.toFixed(2).replace('.', ',')}</div>
             <p style="font-size: 0.82rem; color: var(--c-mint-dark); font-weight: 600; margin-top: 0.3rem;">
-              ✓ O QR Code e a chave Copia e Cola serão gerados ao clicar em Finalizar Pedido.
+              ✓ O QR Code e a chave Copia e Cola serão gerados na próxima tela.
             </p>
           </div>
         </div>
@@ -448,25 +471,45 @@ export function openCheckoutModal() {
       });
     });
 
+    const tabMpPro = modal.querySelector('#pay-tab-mppro');
     const tabPix = modal.querySelector('#pay-tab-pix');
     const tabCard = modal.querySelector('#pay-tab-card');
+    const mpProBox = modal.querySelector('#payment-mppro-details');
     const pixBox = modal.querySelector('#payment-pix-details');
     const cardBox = modal.querySelector('#payment-card-details');
 
-    if (tabPix && tabCard) {
+    if (tabMpPro) {
+      tabMpPro.addEventListener('click', () => {
+        paymentMethod = 'mp_pro';
+        tabMpPro.classList.add('active');
+        if (tabPix) tabPix.classList.remove('active');
+        if (tabCard) tabCard.classList.remove('active');
+        if (mpProBox) mpProBox.style.display = 'block';
+        if (pixBox) pixBox.style.display = 'none';
+        if (cardBox) cardBox.style.display = 'none';
+      });
+    }
+
+    if (tabPix) {
       tabPix.addEventListener('click', () => {
         paymentMethod = 'pix';
         tabPix.classList.add('active');
-        tabCard.classList.remove('active');
+        if (tabMpPro) tabMpPro.classList.remove('active');
+        if (tabCard) tabCard.classList.remove('active');
         if (pixBox) pixBox.style.display = 'block';
+        if (mpProBox) mpProBox.style.display = 'none';
         if (cardBox) cardBox.style.display = 'none';
       });
+    }
 
+    if (tabCard) {
       tabCard.addEventListener('click', () => {
         paymentMethod = 'card';
         tabCard.classList.add('active');
-        tabPix.classList.remove('active');
+        if (tabMpPro) tabMpPro.classList.remove('active');
+        if (tabPix) tabPix.classList.remove('active');
         if (cardBox) cardBox.style.display = 'block';
+        if (mpProBox) mpProBox.style.display = 'none';
         if (pixBox) pixBox.style.display = 'none';
       });
     }
@@ -500,6 +543,49 @@ export function openCheckoutModal() {
           customerCpf,
           customerEmail
         };
+
+        // Opção 1: Mercado Pago Checkout Pro (100% Automático & Seguro)
+        if (paymentMethod === 'mp_pro') {
+          finishBtn.textContent = '⏳ Conectando ao Checkout Oficial do Mercado Pago...';
+          const prefRes = await createCheckoutProPreference({
+            ...orderData,
+            paymentMethod: 'pix'
+          });
+
+          if (prefRes && prefRes.success && prefRes.initPoint) {
+            const pixDiscount = subtotal * 0.05;
+            const finalTotal = subtotal - pixDiscount + shippingCost;
+            const orderObj = {
+              id: orderId,
+              date: new Date().toLocaleDateString('pt-BR'),
+              total: finalTotal,
+              items: [...cart],
+              paymentMethod: 'Mercado Pago Checkout Pro',
+              status: 'Aguardando Pagamento no Mercado Pago',
+              step: 1,
+              trackingCode: null
+            };
+            try {
+              const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+              orders.unshift(orderObj);
+              localStorage.setItem('estilobazar_orders', JSON.stringify(orders));
+            } catch (e) {
+              console.error(e);
+            }
+
+            clearCart();
+            showToast('🚀 Redirecionando para o Checkout Oficial Seguro do Mercado Pago...');
+            setTimeout(() => {
+              window.location.href = prefRes.initPoint;
+            }, 600);
+            return;
+          } else {
+            showToast('⚠️ Erro ao conectar ao Mercado Pago. Tente a opção PIX Direto.');
+            finishBtn.disabled = false;
+            finishBtn.textContent = '🔒 Finalizar Pedido Seguro';
+            return;
+          }
+        }
 
         let paymentResult = null;
         let pixData = null;

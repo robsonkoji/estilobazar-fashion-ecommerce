@@ -269,6 +269,82 @@ export function generateOfficialPixBRCode(key, name, city, amount, txid = 'EB100
   return p + crc16(p);
 }
 
+/**
+ * Cria uma preferência do Mercado Pago Checkout Pro (Ambiente Oficial Seguro)
+ * Redireciona o cliente para a tela oficial de pagamento com aprovação automática em tempo real
+ * @param {Object} orderData Dados do pedido
+ * @returns {Promise<Object>} Preferência com initPoint
+ */
+export async function createCheckoutProPreference(orderData) {
+  const pixDiscount = orderData.paymentMethod === 'pix' ? (orderData.subtotal * 0.05) : 0;
+  const finalAmount = Math.max(1, orderData.subtotal - pixDiscount + (orderData.shippingCost || 0));
+  const validCpf = validateAndSanitizeCPF(orderData.customerCpf);
+
+  const payload = {
+    items: [
+      {
+        id: orderData.orderId || 'EB-1001',
+        title: `EstiloBazar - Pedido #${orderData.orderId || 'EB-1001'}`,
+        description: 'Garimpo Moda Brechó Sustentável',
+        quantity: 1,
+        currency_id: 'BRL',
+        unit_price: Number(finalAmount.toFixed(2))
+      }
+    ],
+    payer: {
+      name: (orderData.customerName || 'Cliente').split(' ')[0],
+      surname: (orderData.customerName || 'EstiloBazar').split(' ').slice(1).join(' ') || 'VIP',
+      email: (orderData.customerEmail && orderData.customerEmail.includes('@')) ? orderData.customerEmail : 'cliente@estilobazar.com.br',
+      identification: {
+        type: 'CPF',
+        number: validCpf
+      }
+    },
+    back_urls: {
+      success: `${window.location.origin}/#minha-conta?status=approved&order_id=${orderData.orderId}`,
+      pending: `${window.location.origin}/#minha-conta?status=pending&order_id=${orderData.orderId}`,
+      failure: `${window.location.origin}/#loja?status=failure`
+    },
+    auto_return: 'approved',
+    external_reference: orderData.orderId || 'EB-1001',
+    statement_descriptor: 'ESTILOBAZAR',
+    notification_url: 'https://estilobazar.com.br/api/payment-webhook'
+  };
+
+  try {
+    const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.init_point) {
+        return {
+          success: true,
+          preferenceId: data.id,
+          initPoint: data.init_point,
+          sandboxInitPoint: data.sandbox_init_point
+        };
+      }
+    } else {
+      const err = await response.json().catch(() => ({}));
+      console.warn('⚠️ Erro Mercado Pago Preference API:', err);
+    }
+  } catch (err) {
+    console.warn('⚠️ Falha ao criar preferência no Mercado Pago:', err.message);
+  }
+
+  return {
+    success: false,
+    error: 'Não foi possível conectar ao Mercado Pago Checkout Pro'
+  };
+}
+
 function generateFallbackPix(orderData, finalAmount) {
   const registeredKey = 'f17f465a-c41b-4653-8a4a-75d7bbb6a53c';
   const pixKey = generateOfficialPixBRCode(registeredKey, 'EstiloBazar', 'Sao Paulo', finalAmount, orderData.orderId || 'EB1001');

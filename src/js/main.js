@@ -24,6 +24,7 @@ import { renderDrawers, setupDrawerListeners, updateCartDrawer, updateFavDrawer 
 import { renderWhatsAppButton } from './components/whatsapp.js';
 import { renderSocialProofContainer, setupSocialProofListeners } from './components/socialProof.js';
 import { openOrdersModal } from './components/ordersModal.js';
+import { clearCart, showToast } from './utils/storage.js';
 
 // Admin & Coming Soon Components
 import { isAuthenticated } from './utils/auth.js';
@@ -146,9 +147,42 @@ function renderPageView(route) {
   }
 }
 
+function checkMercadoPagoReturn() {
+  try {
+    const fullUrl = window.location.href;
+    const hasStatus = fullUrl.includes('status=approved') || fullUrl.includes('collection_status=approved');
+    
+    if (hasStatus) {
+      const orders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
+      let updated = false;
+
+      orders.forEach(ord => {
+        if (ord.status && (ord.status.includes('Aguardando') || ord.status.includes('Mercado Pago'))) {
+          ord.status = 'Pagamento Aprovado';
+          ord.step = 2; // Em Separação
+          updated = true;
+        }
+      });
+
+      if (updated || orders.length > 0) {
+        localStorage.setItem('estilobazar_orders', JSON.stringify(orders));
+        clearCart();
+        setTimeout(() => {
+          showToast('🎉 Pagamento confirmado com sucesso pelo Mercado Pago! Seu pedido está em separação. 📦');
+        }, 800);
+      }
+    }
+  } catch (e) {
+    console.error('⚠️ Erro ao verificar retorno do Mercado Pago:', e);
+  }
+}
+
 function initApp() {
   const app = document.getElementById('app');
   if (!app) return;
+
+  // Verifica retorno automático de pagamento do Mercado Pago
+  checkMercadoPagoReturn();
 
   // Setup Page Router
   setupRouter((route) => {
