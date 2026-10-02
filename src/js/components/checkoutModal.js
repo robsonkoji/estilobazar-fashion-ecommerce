@@ -618,19 +618,15 @@ export function openCheckoutModal() {
         const pId = (pixData && pixData.paymentId) || (checkPixBtn ? checkPixBtn.getAttribute('data-pid') : null);
         const oId = orderId;
 
-        let pollCount = 0;
         // Polling automático a cada 3s para identificar pagamento PIX em tempo real
-        if (paymentMethod === 'pix') {
+        if (paymentMethod === 'pix' && pId) {
           pixPollInterval = setInterval(async () => {
-            pollCount++;
             try {
               const statusRes = await checkPaymentStatus(pId);
-              if ((statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) || pollCount >= 2) {
+              if (statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) {
                 markOrderAsApproved(oId);
               }
-            } catch (e) {
-              if (pollCount >= 2) markOrderAsApproved(oId);
-            }
+            } catch (e) {}
           }, 3000);
         }
 
@@ -643,7 +639,9 @@ export function openCheckoutModal() {
             if (statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) {
               markOrderAsApproved(oId);
             } else {
-              markOrderAsApproved(oId);
+              showToast('⏳ Pagamento ainda não identificado. Assim que concluir o PIX no app do banco, a tela atualizará automaticamente!');
+              checkPixBtn.disabled = false;
+              checkPixBtn.textContent = '🔄 Já Paguei! Verificar Confirmação de Pagamento';
             }
           });
         }
