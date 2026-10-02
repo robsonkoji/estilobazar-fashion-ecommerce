@@ -635,11 +635,12 @@ export function openCheckoutModal() {
             checkPixBtn.disabled = true;
             checkPixBtn.textContent = '⏳ Consultando banco...';
 
-            const statusRes = await checkPaymentStatus(pId);
+            const statusRes = await checkPaymentStatus(pId, { userConfirmed: true });
             if (statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) {
               markOrderAsApproved(oId);
+              showToast('✅ Pagamento PIX confirmado com sucesso! Pedido em separação. 📦');
             } else {
-              showToast('⏳ Pagamento ainda não identificado. Assim que concluir o PIX no app do banco, a tela atualizará automaticamente!');
+              showToast('⏳ Pagamento ainda não identificado. Assim que concluir o PIX no app do banco, clique novamente!');
               checkPixBtn.disabled = false;
               checkPixBtn.textContent = '🔄 Já Paguei! Verificar Confirmação de Pagamento';
             }

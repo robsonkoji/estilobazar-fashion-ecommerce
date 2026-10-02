@@ -155,16 +155,27 @@ export async function processCreditCardPayment(cardData, orderData) {
 /**
  * Consulta o status atual de um pagamento (Polling em tempo real)
  * @param {string|number} paymentId ID do pagamento no gateway
+ * @param {Object} [options] Opções de consulta ({ userConfirmed: true })
  * @returns {Promise<Object>} Status atual
  */
-export async function checkPaymentStatus(paymentId) {
+export async function checkPaymentStatus(paymentId, options = {}) {
   if (!paymentId || String(paymentId).startsWith('pay_card_')) {
     return { status: 'approved' };
   }
 
+  const strPid = String(paymentId);
+
+  // Tratamento para PIX Local / Chave Estática da loja (f17f465a-c41b-4653-8a4a-75d7bbb6a53c)
+  if (strPid.startsWith('pix_local_')) {
+    if (options && options.userConfirmed) {
+      return { status: 'approved', statusDetail: 'confirmado_pelo_usuario' };
+    }
+    return { status: 'pending' };
+  }
+
   // 1. Tenta consultar via API Serverless /api/check-pix (evita erros de CORS no navegador)
   try {
-    const apiResponse = await fetch(`/api/check-pix?paymentId=${paymentId}`, {
+    const apiResponse = await fetch(`/api/check-pix?paymentId=${encodeURIComponent(strPid)}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -182,24 +193,26 @@ export async function checkPaymentStatus(paymentId) {
     console.warn('⚠️ Tentando consulta direta ao gateway...', apiErr.message);
   }
 
-  // 2. Chamada direta de fallback ao Mercado Pago API
-  try {
-    const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`
-      }
-    });
+  // 2. Chamada direta de fallback ao Mercado Pago API (somente se for ID numérico de pagamento)
+  if (/^\d+$/.test(strPid)) {
+    try {
+      const response = await fetch(`https://api.mercadopago.com/v1/payments/${strPid}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${MP_ACCESS_TOKEN}`
+        }
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        status: data.status,
-        statusDetail: data.status_detail
-      };
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          status: data.status,
+          statusDetail: data.status_detail
+        };
+      }
+    } catch (e) {
+      console.warn('⚠️ Erro ao consultar status do pagamento:', e.message);
     }
-  } catch (e) {
-    console.warn('⚠️ Erro ao consultar status do pagamento:', e.message);
   }
 
   return { status: 'pending' };
