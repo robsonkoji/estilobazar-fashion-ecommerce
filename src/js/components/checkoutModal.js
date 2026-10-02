@@ -746,12 +746,7 @@ export function openCheckoutModal() {
         if (trackBtn) trackBtn.addEventListener('click', cleanupModal);
 
         const closeBtn = modal.querySelector('#checkout-close-btn');
-        if (closeBtn) closeBtn.addEventListener('click', cleanupModal);Selector('#checkout-track-btn');
-        if (trackBtn) {
-          trackBtn.addEventListener('click', () => {
-            modal.remove();
-          });
-        }
+        if (closeBtn) closeBtn.addEventListener('click', cleanupModal);
       });
     }
   }
