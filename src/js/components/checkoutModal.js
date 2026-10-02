@@ -701,7 +701,18 @@ export function openCheckoutModal() {
         const pId = (pixData && pixData.paymentId) || (checkPixBtn ? checkPixBtn.getAttribute('data-pid') : null);
         const oId = orderId;
 
-        // Verificação 100% manual no botão (Sem verificação automática em segundo plano)
+        // Polling automático a cada 3s para identificar aprovação REAL pelo banco/gateway em tempo real
+        if (paymentMethod === 'pix' && pId) {
+          pixPollInterval = setInterval(async () => {
+            try {
+              const statusRes = await checkPaymentStatus(pId);
+              if (statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) {
+                markOrderAsApproved(oId);
+                showToast('🎉 Pagamento PIX identificado e aprovado pelo banco em tempo real! 📦');
+              }
+            } catch (e) {}
+          }, 3000);
+        }
 
         if (checkPixBtn) {
           checkPixBtn.addEventListener('click', async () => {
