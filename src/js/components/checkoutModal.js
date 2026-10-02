@@ -701,17 +701,7 @@ export function openCheckoutModal() {
         const pId = (pixData && pixData.paymentId) || (checkPixBtn ? checkPixBtn.getAttribute('data-pid') : null);
         const oId = orderId;
 
-        // Polling automático a cada 3s para identificar pagamento PIX em tempo real
-        if (paymentMethod === 'pix' && pId) {
-          pixPollInterval = setInterval(async () => {
-            try {
-              const statusRes = await checkPaymentStatus(pId);
-              if (statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) {
-                markOrderAsApproved(oId);
-              }
-            } catch (e) {}
-          }, 3000);
-        }
+        // Verificação 100% manual no botão (Sem verificação automática em segundo plano)
 
         if (checkPixBtn) {
           checkPixBtn.addEventListener('click', async () => {
