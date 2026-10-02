@@ -26,7 +26,7 @@ export function openCheckoutModal() {
   modal.id = 'checkout-modal';
 
   let currentStep = 1;
-  let paymentMethod = 'mp_pro'; // 'mp_pro' | 'pix' | 'card'
+  let paymentMethod = 'pix'; // 'pix' (Sem Login) | 'card' | 'mp_pro'
 
   function renderStep1() {
     return `
@@ -173,18 +173,29 @@ export function openCheckoutModal() {
         <!-- Payment Method Selection -->
         <div class="checkout-block-title">Forma de Pagamento:</div>
         <div class="payment-tabs" style="display: flex; gap: 0.4rem; margin-bottom: 1.2rem;">
-          <button type="button" class="payment-tab ${paymentMethod === 'mp_pro' ? 'active' : ''}" id="pay-tab-mppro" style="flex: 1.2;">
-            <span>🛡️ Mercado Pago Pro</span>
-            <span class="badge-discount" style="background: #009EE3; color: white;">Auto-Aprovado</span>
-          </button>
-          <button type="button" class="payment-tab ${paymentMethod === 'pix' ? 'active' : ''}" id="pay-tab-pix" style="flex: 1;">
-            <span>✨ PIX Direto</span>
-            <span class="badge-discount">-5% OFF</span>
+          <button type="button" class="payment-tab ${paymentMethod === 'pix' ? 'active' : ''}" id="pay-tab-pix" style="flex: 1.3;">
+            <span>⚡ PIX Rápido</span>
+            <span class="badge-discount" style="background: #2E7D32; color: white;">-5% OFF (Sem Login)</span>
           </button>
           <button type="button" class="payment-tab ${paymentMethod === 'card' ? 'active' : ''}" id="pay-tab-card" style="flex: 1;">
             <span>💳 Cartão</span>
             <span class="badge-sub">Até 6x</span>
           </button>
+          <button type="button" class="payment-tab ${paymentMethod === 'mp_pro' ? 'active' : ''}" id="pay-tab-mppro" style="flex: 1;">
+            <span>🛡️ Checkout Pro</span>
+            <span class="badge-sub">Com Conta</span>
+          </button>
+        </div>
+
+        <!-- PIX Form / Details (Sem Login) -->
+        <div id="payment-pix-details" style="display: ${paymentMethod === 'pix' ? 'block' : 'none'};" class="payment-box">
+          <div class="pix-summary-box" style="background: #F0F8F1; border: 2px solid #8EC490; padding: 1.2rem; border-radius: var(--radius-md); text-align: center;">
+            <div style="font-size: 0.88rem; color: var(--c-text-muted);">Total com 5% de desconto no PIX Rápido:</div>
+            <div class="pix-total-price" style="font-size: 1.6rem; font-weight: 800; color: #2E7D32; margin: 0.3rem 0;">R$ ${pixTotal.toFixed(2).replace('.', ',')}</div>
+            <p style="font-size: 0.82rem; color: #166534; font-weight: 600; margin-top: 0.3rem;">
+              🚀 <strong>Sem necessidade de login ou senha!</strong> O QR Code e a chave Copia e Cola serão exibidos na mesma hora.
+            </p>
+          </div>
         </div>
 
         <!-- Mercado Pago Checkout Pro Box -->
@@ -192,28 +203,14 @@ export function openCheckoutModal() {
           <div style="background: linear-gradient(135deg, #E0F2FE 0%, #FFFFFF 100%); border: 2px solid #009EE3; border-radius: var(--radius-md); padding: 1.2rem; text-align: center; box-shadow: 0 4px 15px rgba(0, 158, 227, 0.12);">
             <div style="font-size: 2.2rem; margin-bottom: 0.3rem;">🛡️</div>
             <div style="font-weight: 800; font-size: 1.05rem; color: #0070A3; margin-bottom: 0.3rem;">
-              Mercado Pago Checkout Pro (100% Seguro &amp; Automático)
+              Mercado Pago Checkout Pro (Requer Login no Mercado Pago)
             </div>
             <p style="font-size: 0.85rem; color: var(--c-text-main); margin-bottom: 0.8rem; line-height: 1.4;">
-              Pague via <strong>PIX</strong> (com 5% OFF) ou <strong>Cartão em até 6x</strong> na página oficial criptografada do Mercado Pago. O pagamento é <strong>aprovado em tempo real</strong> pelo Banco Central!
+              Redireciona para o ambiente do Mercado Pago. Caso possua conta cadastrada no Mercado Pago, exige login.
             </p>
             <div style="font-size: 1.4rem; font-weight: 800; color: #0070A3; margin-bottom: 0.4rem;" class="pix-total-price">
               Total: R$ ${pixTotal.toFixed(2).replace('.', ',')}
             </div>
-            <div style="font-size: 0.78rem; color: #0369A1; font-weight: 600;">
-              ✓ Redirecionamento seguro com confirmação automática de pedido
-            </div>
-          </div>
-        </div>
-
-        <!-- PIX Form / Details -->
-        <div id="payment-pix-details" style="display: ${paymentMethod === 'pix' ? 'block' : 'none'};" class="payment-box">
-          <div class="pix-summary-box">
-            <div style="font-size: 0.9rem; color: var(--c-text-muted);">Total com 5% de desconto no PIX:</div>
-            <div class="pix-total-price">R$ ${pixTotal.toFixed(2).replace('.', ',')}</div>
-            <p style="font-size: 0.82rem; color: var(--c-mint-dark); font-weight: 600; margin-top: 0.3rem;">
-              ✓ O QR Code e a chave Copia e Cola serão gerados na próxima tela.
-            </p>
           </div>
         </div>
 
