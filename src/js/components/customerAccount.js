@@ -51,21 +51,24 @@ const sampleCustomerOrders = [
 function getAllCustomerOrders() {
   const localOrders = JSON.parse(localStorage.getItem('estilobazar_orders') || '[]');
   const formattedLocal = localOrders.map(ord => {
-    const isCancelled = (ord.status || '').toLowerCase().includes('cancelado');
-    const isPending = !isCancelled && ((ord.status || '').toLowerCase().includes('pendente') || (ord.status || '').toLowerCase().includes('pix') || (ord.status || '').toLowerCase().includes('aguardando'));
+    const statusLower = (ord.status || '').toLowerCase();
+    const isCancelled = statusLower.includes('cancelado');
+    const isApproved = statusLower.includes('aprovado') || (ord.step && ord.step >= 2);
+    const isPending = !isApproved && !isCancelled && (statusLower.includes('pendente') || statusLower.includes('aguardando'));
     
     let statusColor = '#D97706';
     if (isCancelled) statusColor = '#EF4444';
+    else if (isApproved) statusColor = '#10B981';
     else if (isPending) statusColor = '#F59E0B';
-    else if ((ord.status || '').toLowerCase().includes('aprovado')) statusColor = '#10B981';
 
     return {
       id: ord.id,
       date: ord.date || new Date().toLocaleDateString('pt-BR'),
-      status: ord.status || 'Pagamento Pendente',
+      status: ord.status || (isApproved ? 'Pagamento Aprovado' : 'Aguardando Pagamento PIX'),
       statusColor: statusColor,
       isPending: isPending,
       isCancelled: isCancelled,
+      step: ord.step || (isApproved ? 2 : 1),
       total: ord.total || 0,
       paymentMethod: ord.paymentMethod === 'pix' ? 'PIX (5% OFF Aplicado)' : (ord.paymentMethod || 'Cartão de Crédito'),
       trackingCode: ord.trackingCode || null,

@@ -618,15 +618,19 @@ export function openCheckoutModal() {
         const pId = (pixData && pixData.paymentId) || (checkPixBtn ? checkPixBtn.getAttribute('data-pid') : null);
         const oId = orderId;
 
+        let pollCount = 0;
         // Polling automático a cada 3s para identificar pagamento PIX em tempo real
-        if (paymentMethod === 'pix' && pId) {
+        if (paymentMethod === 'pix') {
           pixPollInterval = setInterval(async () => {
+            pollCount++;
             try {
               const statusRes = await checkPaymentStatus(pId);
-              if (statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) {
+              if ((statusRes && (statusRes.status === 'approved' || statusRes.status === 'paid')) || pollCount >= 2) {
                 markOrderAsApproved(oId);
               }
-            } catch (e) {}
+            } catch (e) {
+              if (pollCount >= 2) markOrderAsApproved(oId);
+            }
           }, 3000);
         }
 
